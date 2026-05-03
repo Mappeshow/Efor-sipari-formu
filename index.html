@@ -297,7 +297,7 @@ button{
     </div>
 
     <div id="kayitDurumu" class="save-status passive">
-      Cari seçilince vade gelir. Ürün seçilince fiyat ve para birimi gelir. Sevk adresi seçilince kişi ve telefon gelir.
+      Cari seçilince sadece o cariye bağlı vade gelir. Sevk adresi seçilince sadece o adrese bağlı kişi ve telefon gelir.
     </div>
 
     <div id="urunler"></div>
@@ -379,7 +379,6 @@ function ayniMi(a, b){
 function historyBosModel(){
   return {
     musteriler: [],
-    vadeler: [],
     urunler: []
   };
 }
@@ -419,12 +418,6 @@ function gecmisleriYukle(){
           .filter(function(item){
             return item.musteri.length > 0;
           });
-      }
-
-      if(Array.isArray(parsed.vadeler)){
-        historyData.vadeler = parsed.vadeler
-          .map(temizMetin)
-          .filter(function(x){ return x.length > 0; });
       }
 
       if(Array.isArray(parsed.urunler)){
@@ -478,12 +471,6 @@ function eskiGecmisleriTasiyarakYukle(){
         });
       }
 
-      if(Array.isArray(eski.vade)){
-        eski.vade.forEach(function(vade){
-          vadeGecmiseEkle(vade);
-        });
-      }
-
       if(Array.isArray(eski.urunler)){
         eski.urunler.forEach(function(item){
           if(typeof item === "string"){
@@ -516,25 +503,6 @@ function gecmisleriKaydet(){
   }catch(e){}
 }
 
-function vadeGecmiseEkle(vade){
-  const temiz = temizMetin(vade);
-  if(!temiz) return;
-
-  const mevcutIndex = historyData.vadeler.findIndex(function(x){
-    return ayniMi(x, temiz);
-  });
-
-  if(mevcutIndex >= 0){
-    historyData.vadeler.splice(mevcutIndex, 1);
-  }
-
-  historyData.vadeler.unshift(temiz);
-
-  if(historyData.vadeler.length > 100){
-    historyData.vadeler = historyData.vadeler.slice(0, 100);
-  }
-}
-
 function musteriBul(musteriAdi){
   const temiz = temizMetin(musteriAdi);
   if(!temiz) return null;
@@ -562,7 +530,6 @@ function musteriGecmiseEkle(musteriAdi, vade, sevkler){
 
   if(temizVade){
     mevcut.vade = temizVade;
-    vadeGecmiseEkle(temizVade);
   }
 
   if(Array.isArray(sevkler)){
@@ -666,8 +633,8 @@ function musteriSecilinceDoldur(input, item){
 
   const vadeEl = document.getElementById("vade");
 
-  if(vadeEl && item.vade){
-    vadeEl.value = item.vade;
+  if(vadeEl){
+    vadeEl.value = item.vade || "";
   }
 
   document.querySelectorAll(".suggestions").forEach(function(panel){
@@ -676,7 +643,7 @@ function musteriSecilinceDoldur(input, item){
 
   otomatikKaydetPlanla();
 
-  kayitDurumuYaz("Cari geçmişten seçildi. Vade otomatik getirildi. Sevk adreslerinde bu cariye ait geçmişler öncelikli gösterilir.", true);
+  kayitDurumuYaz("Cari geçmişten seçildi. Sadece bu cariye bağlı vade getirildi.", true);
 }
 
 function urunSecilinceDetaylariDoldur(input, item){
@@ -725,12 +692,19 @@ function sevkAdresiSecilinceDoldur(input, sevk){
 
   otomatikKaydetPlanla();
 
-  kayitDurumuYaz("Sevk adresi geçmişten seçildi. İlgili kişi ve telefon otomatik getirildi.", true);
+  kayitDurumuYaz("Sevk adresi geçmişten seçildi. Sadece bu adrese bağlı kişi ve telefon getirildi.", true);
 }
 
-function vadeSecilinceDoldur(input, vade){
-  input.value = vade || "";
-  otomatikKaydetPlanla();
+function panelHazirla(wrap){
+  let panel = wrap.querySelector(".suggestions");
+
+  if(!panel){
+    panel = document.createElement("div");
+    panel.className = "suggestions";
+    wrap.appendChild(panel);
+  }
+
+  return panel;
 }
 
 function cariOnerileriGoster(input){
@@ -766,7 +740,7 @@ function cariOnerileriGoster(input){
 
     const sub = document.createElement("div");
     sub.className = "suggestion-sub";
-    sub.textContent = item.vade ? "Vade: " + item.vade : "Vade kaydı yok";
+    sub.textContent = item.vade ? "Vade: " + item.vade : "Bu cariye bağlı vade kaydı yok";
 
     div.appendChild(main);
     div.appendChild(sub);
@@ -788,43 +762,45 @@ function vadeOnerileriGoster(input){
   if(!wrap) return;
 
   const panel = panelHazirla(wrap);
-  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const cari = musteriBul(deger("musteri"));
 
-  let sonuc = historyData.vadeler || [];
-
-  if(yazilan){
-    sonuc = sonuc.filter(function(item){
-      return item.toLocaleLowerCase("tr-TR").includes(yazilan);
-    });
-  }
-
-  sonuc = sonuc.slice(0, 12);
   panel.innerHTML = "";
 
-  if(sonuc.length < 1){
+  if(!cari || !cari.vade){
     panel.style.display = "none";
     return;
   }
 
-  sonuc.forEach(function(item){
-    const div = document.createElement("div");
-    div.className = "suggestion-item";
+  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const cariVade = cari.vade;
 
-    const main = document.createElement("div");
-    main.className = "suggestion-main";
-    main.textContent = item;
+  if(yazilan && !cariVade.toLocaleLowerCase("tr-TR").includes(yazilan)){
+    panel.style.display = "none";
+    return;
+  }
 
-    div.appendChild(main);
+  const div = document.createElement("div");
+  div.className = "suggestion-item";
 
-    div.addEventListener("mousedown", function(e){
-      e.preventDefault();
-      vadeSecilinceDoldur(input, item);
-      panel.style.display = "none";
-    });
+  const main = document.createElement("div");
+  main.className = "suggestion-main";
+  main.textContent = cariVade;
 
-    panel.appendChild(div);
+  const sub = document.createElement("div");
+  sub.className = "suggestion-sub";
+  sub.textContent = "Cari: " + cari.musteri;
+
+  div.appendChild(main);
+  div.appendChild(sub);
+
+  div.addEventListener("mousedown", function(e){
+    e.preventDefault();
+    input.value = cariVade;
+    panel.style.display = "none";
+    otomatikKaydetPlanla();
   });
 
+  panel.appendChild(div);
   panel.style.display = "block";
 }
 
@@ -883,47 +859,26 @@ function urunOnerileriGoster(input){
   panel.style.display = "block";
 }
 
-function tumSevkleriTekListeYap(){
-  const liste = [];
-
-  historyData.musteriler.forEach(function(musteri){
-    if(!Array.isArray(musteri.sevkler)) return;
-
-    musteri.sevkler.forEach(function(sevk){
-      const mevcut = liste.find(function(x){
-        return ayniMi(x.sevkAdresi, sevk.sevkAdresi);
-      });
-
-      if(!mevcut){
-        liste.push({
-          sevkAdresi: sevk.sevkAdresi,
-          sevkIlgiliKisi: sevk.sevkIlgiliKisi,
-          sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
-          musteri: musteri.musteri
-        });
-      }
-    });
-  });
-
-  return liste;
-}
-
 function cariBazliSevkListesiAl(){
   const musteri = deger("musteri");
   const cari = musteriBul(musteri);
 
-  if(cari && Array.isArray(cari.sevkler) && cari.sevkler.length > 0){
-    return cari.sevkler.map(function(sevk){
-      return {
-        sevkAdresi: sevk.sevkAdresi,
-        sevkIlgiliKisi: sevk.sevkIlgiliKisi,
-        sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
-        musteri: cari.musteri
-      };
-    });
+  if(!cari){
+    return [];
   }
 
-  return tumSevkleriTekListeYap();
+  if(!Array.isArray(cari.sevkler)){
+    return [];
+  }
+
+  return cari.sevkler.map(function(sevk){
+    return {
+      sevkAdresi: sevk.sevkAdresi,
+      sevkIlgiliKisi: sevk.sevkIlgiliKisi,
+      sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
+      musteri: cari.musteri
+    };
+  });
 }
 
 function sevkOnerileriGoster(input){
@@ -974,7 +929,7 @@ function sevkOnerileriGoster(input){
       detay.push("Cari: " + item.musteri);
     }
 
-    sub.textContent = detay.length > 0 ? detay.join("  •  ") : "Kişi / telefon kaydı yok";
+    sub.textContent = detay.length > 0 ? detay.join("  •  ") : "Bu adrese bağlı kişi / telefon kaydı yok";
 
     div.appendChild(main);
     div.appendChild(sub);
@@ -989,18 +944,6 @@ function sevkOnerileriGoster(input){
   });
 
   panel.style.display = "block";
-}
-
-function panelHazirla(wrap){
-  let panel = wrap.querySelector(".suggestions");
-
-  if(!panel){
-    panel = document.createElement("div");
-    panel.className = "suggestions";
-    wrap.appendChild(panel);
-  }
-
-  return panel;
 }
 
 function onerileriGoster(input){
@@ -1093,7 +1036,7 @@ function formVerisiniKaydet(){
   try{
     const veri = formVerisiniOku();
     window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(veri));
-    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. İlişkili geçmiş öneriler korunuyor.", true);
+    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. Bağlı geçmiş öneriler korunuyor.", true);
   }catch(e){
     kayitDurumuYaz("Otomatik kayıt yapılamadı. Form yine mail taslağı oluşturabilir.", false);
   }
@@ -1120,7 +1063,7 @@ function formVerisiniYukle(){
 
     if(!ham){
       urunEkle();
-      kayitDurumuYaz("Bilgiler bu cihazda otomatik saklanır. Geçmiş öneriler yazdıkça oluşur.", false);
+      kayitDurumuYaz("Bilgiler bu cihazda otomatik saklanır. Bağlı geçmiş öneriler kayıt yaptıkça oluşur.", false);
       return;
     }
 
@@ -1143,7 +1086,7 @@ function formVerisiniYukle(){
 
     yuklemeYapiliyor = false;
 
-    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Cari/ürün/sevk geçmişi ilişkili çalışır.", true);
+    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Bağlı geçmiş öneriler aktif.", true);
   }catch(e){
     yuklemeYapiliyor = false;
     document.getElementById("urunler").innerHTML = "";
@@ -1166,8 +1109,8 @@ function gecmisiTemizle(){
     "Bu işlem daha önce girilmiş geçmiş önerileri silecektir.\n\n" +
     "Silinecek geçmiş öneriler:\n" +
     "- Cari / müşteri kayıtları\n" +
-    "- Cariyle bağlı vade kayıtları\n" +
-    "- Cariyle bağlı sevk adresi, kişi ve telefon kayıtları\n" +
+    "- Cariye bağlı vade kayıtları\n" +
+    "- Cariye bağlı sevk adresi, kişi ve telefon kayıtları\n" +
     "- Ürün adı, fiyat ve para birimi kayıtları\n\n" +
     "Mevcut form alanları silinmez.\n" +
     "Bu işlem geri alınamaz.\n\n" +
@@ -1346,7 +1289,7 @@ function urunEkle(veri){
       </div>
 
       <div class="section-mini-title">Bu Ürüne Ait Sevk Bilgileri</div>
-      <div class="helper">Cari seçildiyse bu alanda o cariye ait geçmiş sevk adresleri öncelikli gelir.</div>
+      <div class="helper">Sevk önerileri sadece seçili cariye bağlı kayıtlardan gelir.</div>
 
       <label class="required">Sevk Adresi</label>
       <div class="suggest-wrap">
