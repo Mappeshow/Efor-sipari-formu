@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Sipariş Oluştur</title>
+
 <style>
 body{
   margin:0;
@@ -60,6 +61,11 @@ input,textarea,select{
 input:focus,textarea:focus,select:focus{
   border-color:#2563eb;
   box-shadow:0 0 0 3px rgba(37,99,235,0.15);
+}
+.autofilled{
+  background:#fff7cc !important;
+  border-color:#f59e0b !important;
+  box-shadow:0 0 0 3px rgba(245,158,11,0.14) !important;
 }
 .invalid{
   border-color:#dc2626 !important;
@@ -291,13 +297,11 @@ button{
       </div>
 
       <label class="required">Vade / Ödeme</label>
-      <div class="suggest-wrap">
-        <input id="vade" data-history-key="vade" type="text" placeholder="Örn: 30 gün" required autocomplete="off">
-      </div>
+      <input id="vade" type="text" placeholder="Örn: 30 gün" required autocomplete="off">
     </div>
 
     <div id="kayitDurumu" class="save-status passive">
-      Cari seçilince sadece o cariye bağlı vade gelir. Sevk adresi seçilince sadece o adrese bağlı kişi ve telefon gelir.
+      Her form kaydı bağlılıklarıyla saklanır. Cari seçilince vade, cari ürünü seçilince fiyat/birim, cari sevki seçilince kişi/telefon gelir.
     </div>
 
     <div id="urunler"></div>
@@ -312,15 +316,14 @@ button{
     <button class="primary" onclick="mailTaslagiOlustur()">Mail Taslağı Oluştur</button>
     <button class="secondary" onclick="onizlemeGoster()">Mail Önizleme Göster</button>
     <button class="danger" onclick="formuTemizle()">Formu Temizle</button>
-    <button class="danger" onclick="gecmisiTemizle()">Geçmiş Önerileri Temizle</button>
+    <button class="danger" onclick="gecmisiTemizle()">Tüm Form Geçmişini Temizle</button>
 
     <div id="preview" class="preview"></div>
 
     <div class="note">
       Kırmızı yıldızlı alanlar zorunludur. Ürün 1 silinemez. Fiyat, ürün notu ve genel sipariş notu isteğe bağlıdır.
-      Fiyat boş bırakıldığında sistemdeki geçerli fiyat baz alınacaktır.
-      Ürün geçmişinden seçim yapılırsa sadece kayıtlı fiyat ve para birimi otomatik gelir. Birim kullanıcı tarafından seçilmelidir.
-      Bu form server kullanmaz. Bilgiler sadece bu cihazın tarayıcı hafızasında saklanır.
+      Otomatik doldurulan alanlar sarı görünür; kullanıcı elle değiştirirse beyaza döner.
+      Bu form server kullanmaz. Geçmiş kayıtlar sadece bu cihazın tarayıcı hafızasında saklanır.
     </div>
   </div>
 
@@ -331,10 +334,11 @@ button{
 let urunSayisi = 0;
 let kayitTimer = null;
 let yuklemeYapiliyor = false;
-let historyData = {};
+let programatikDoldurma = false;
+let formGecmisi = [];
 
-const FORM_STORAGE_KEY = "alltech_siparis_form_kayit_v5";
-const HISTORY_STORAGE_KEY = "alltech_siparis_form_gecmis_v4";
+const FORM_STORAGE_KEY = "alltech_siparis_son_taslak_v1";
+const HISTORY_STORAGE_KEY = "alltech_siparis_tum_form_gecmisi_v1";
 
 const toRecipients = "hasan.uysal@alltech.com,selcuk.tanyeri@alltech.com";
 const ccRecipients = "erhan.mustecep@alltech.com,sbacinoglu@alltech.com";
@@ -372,19 +376,75 @@ function temizMetin(value){
   return String(value || "").trim().replace(/\s+/g, " ");
 }
 
-function ayniMi(a, b){
-  return temizMetin(a).toLocaleLowerCase("tr-TR") === temizMetin(b).toLocaleLowerCase("tr-TR");
+function karsilastirmaMetni(value){
+  return temizMetin(value).toLocaleLowerCase("tr-TR");
 }
 
-function historyBosModel(){
+function ayniMi(a, b){
+  return karsilastirmaMetni(a) === karsilastirmaMetni(b);
+}
+
+function setAutoValue(el, value){
+  if(!el) return;
+
+  programatikDoldurma = true;
+  el.value = value || "";
+  el.classList.add("autofilled");
+  programatikDoldurma = false;
+}
+
+function clearAutoValue(el){
+  if(!el) return;
+  el.classList.remove("autofilled");
+}
+
+function kullaniciDegistirdi(e){
+  if(programatikDoldurma) return;
+
+  const el = e.target;
+
+  if(el && el.classList && el.classList.contains("autofilled")){
+    el.classList.remove("autofilled");
+  }
+}
+
+function formVerisiniOku(){
+  const urunKutulari = document.querySelectorAll(".product-box");
+  const urunler = [];
+
+  urunKutulari.forEach(function(box){
+    urunler.push({
+      urunAdi: box.querySelector(".urunAdi").value.trim(),
+      miktar: box.querySelector(".miktar").value.trim(),
+      birim: box.querySelector(".birim").value.trim(),
+      fiyat: box.querySelector(".fiyat").value.trim(),
+      paraBirimi: box.querySelector(".paraBirimi").value.trim(),
+      sevkAdresi: box.querySelector(".kalemSevkAdresi").value.trim(),
+      sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value.trim(),
+      sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value.trim(),
+      urunNotu: box.querySelector(".urunNotu").value.trim()
+    });
+  });
+
   return {
-    musteriler: [],
-    urunler: []
+    musteri: deger("musteri"),
+    vade: deger("vade"),
+    genelNot: deger("genelNot"),
+    urunler: urunler
   };
 }
 
-function gecmisleriYukle(){
-  historyData = historyBosModel();
+function formImzasiOlustur(form){
+  return JSON.stringify({
+    musteri: form.musteri,
+    vade: form.vade,
+    genelNot: form.genelNot,
+    urunler: form.urunler
+  });
+}
+
+function formGecmisiniYukle(){
+  formGecmisi = [];
 
   if(!storageAktifMi()){
     return;
@@ -392,307 +452,230 @@ function gecmisleriYukle(){
 
   try{
     const ham = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+    if(!ham) return;
 
-    if(ham){
-      const parsed = JSON.parse(ham);
+    const parsed = JSON.parse(ham);
 
-      if(Array.isArray(parsed.musteriler)){
-        historyData.musteriler = parsed.musteriler
-          .map(function(item){
-            return {
-              musteri: temizMetin(item.musteri),
-              vade: temizMetin(item.vade),
-              sevkler: Array.isArray(item.sevkler)
-                ? item.sevkler.map(function(sevk){
+    if(Array.isArray(parsed)){
+      formGecmisi = parsed
+        .filter(function(kayit){
+          return kayit && kayit.form && temizMetin(kayit.form.musteri);
+        })
+        .map(function(kayit){
+          return {
+            id: kayit.id || String(Date.now()),
+            tarih: kayit.tarih || "",
+            imza: kayit.imza || formImzasiOlustur(kayit.form),
+            form: {
+              musteri: temizMetin(kayit.form.musteri),
+              vade: temizMetin(kayit.form.vade),
+              genelNot: temizMetin(kayit.form.genelNot),
+              urunler: Array.isArray(kayit.form.urunler)
+                ? kayit.form.urunler.map(function(u){
                     return {
-                      sevkAdresi: temizMetin(sevk.sevkAdresi),
-                      sevkIlgiliKisi: temizMetin(sevk.sevkIlgiliKisi),
-                      sevkIlgiliTelefon: temizMetin(sevk.sevkIlgiliTelefon)
+                      urunAdi: temizMetin(u.urunAdi),
+                      miktar: temizMetin(u.miktar),
+                      birim: temizMetin(u.birim),
+                      fiyat: temizMetin(u.fiyat),
+                      paraBirimi: temizMetin(u.paraBirimi) || "$",
+                      sevkAdresi: temizMetin(u.sevkAdresi),
+                      sevkIlgiliKisi: temizMetin(u.sevkIlgiliKisi),
+                      sevkIlgiliTelefon: temizMetin(u.sevkIlgiliTelefon),
+                      urunNotu: temizMetin(u.urunNotu)
                     };
-                  }).filter(function(sevk){
-                    return sevk.sevkAdresi.length > 0;
                   })
                 : []
-            };
-          })
-          .filter(function(item){
-            return item.musteri.length > 0;
-          });
-      }
-
-      if(Array.isArray(parsed.urunler)){
-        historyData.urunler = parsed.urunler
-          .map(function(item){
-            if(typeof item === "string"){
-              return {
-                urunAdi: temizMetin(item),
-                fiyat: "",
-                paraBirimi: "$"
-              };
             }
-
-            return {
-              urunAdi: temizMetin(item.urunAdi),
-              fiyat: temizMetin(item.fiyat),
-              paraBirimi: temizMetin(item.paraBirimi) || "$"
-            };
-          })
-          .filter(function(item){
-            return item.urunAdi.length > 0;
-          });
-      }
-
-      return;
+          };
+        });
     }
-
-    eskiGecmisleriTasiyarakYukle();
   }catch(e){
-    historyData = historyBosModel();
+    formGecmisi = [];
   }
 }
 
-function eskiGecmisleriTasiyarakYukle(){
-  const eskiKeyler = [
-    "alltech_siparis_form_gecmis_v3",
-    "alltech_siparis_form_gecmis_v2",
-    "alltech_siparis_form_gecmis_v1"
-  ];
-
-  for(let i = 0; i < eskiKeyler.length; i++){
-    const ham = window.localStorage.getItem(eskiKeyler[i]);
-    if(!ham) continue;
-
-    try{
-      const eski = JSON.parse(ham);
-
-      if(Array.isArray(eski.musteri)){
-        eski.musteri.forEach(function(musteri){
-          musteriGecmiseEkle(musteri, "", []);
-        });
-      }
-
-      if(Array.isArray(eski.urunler)){
-        eski.urunler.forEach(function(item){
-          if(typeof item === "string"){
-            urunGecmiseEkle(item, "", "$");
-          }else{
-            urunGecmiseEkle(item.urunAdi, item.fiyat, item.paraBirimi);
-          }
-        });
-      }
-
-      if(Array.isArray(eski.urunAdi)){
-        eski.urunAdi.forEach(function(urunAdi){
-          urunGecmiseEkle(urunAdi, "", "$");
-        });
-      }
-
-      gecmisleriKaydet();
-      return;
-    }catch(e){}
-  }
-}
-
-function gecmisleriKaydet(){
+function formGecmisiniKaydet(){
   if(!storageAktifMi()){
     return;
   }
 
   try{
-    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(historyData));
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(formGecmisi));
   }catch(e){}
 }
 
-function musteriBul(musteriAdi){
-  const temiz = temizMetin(musteriAdi);
-  if(!temiz) return null;
+function formuGecmiseKaydet(){
+  const form = formVerisiniOku();
 
-  return historyData.musteriler.find(function(item){
-    return ayniMi(item.musteri, temiz);
-  }) || null;
+  if(!temizMetin(form.musteri)){
+    return false;
+  }
+
+  const imza = formImzasiOlustur(form);
+  const sonKayit = formGecmisi.length > 0 ? formGecmisi[0] : null;
+
+  if(sonKayit && sonKayit.imza === imza){
+    return false;
+  }
+
+  formGecmisi.unshift({
+    id: String(Date.now()),
+    tarih: new Date().toISOString(),
+    imza: imza,
+    form: form
+  });
+
+  if(formGecmisi.length > 1000){
+    formGecmisi = formGecmisi.slice(0, 1000);
+  }
+
+  formGecmisiniKaydet();
+
+  return true;
 }
 
-function musteriGecmiseEkle(musteriAdi, vade, sevkler){
-  const temizMusteri = temizMetin(musteriAdi);
-  if(!temizMusteri) return;
+function cariKayitlariAl(musteri){
+  const cari = temizMetin(musteri);
 
-  const temizVade = temizMetin(vade);
-
-  let mevcut = musteriBul(temizMusteri);
-
-  if(!mevcut){
-    mevcut = {
-      musteri: temizMusteri,
-      vade: "",
-      sevkler: []
-    };
+  if(!cari){
+    return [];
   }
 
-  if(temizVade){
-    mevcut.vade = temizVade;
+  return formGecmisi.filter(function(kayit){
+    return kayit && kayit.form && ayniMi(kayit.form.musteri, cari);
+  });
+}
+
+function cariSonKaydiAl(musteri){
+  const kayitlar = cariKayitlariAl(musteri);
+  return kayitlar.length > 0 ? kayitlar[0] : null;
+}
+
+function cariOnerileriAl(yazilan){
+  const arama = karsilastirmaMetni(yazilan);
+  const liste = [];
+  const eklenen = {};
+
+  formGecmisi.forEach(function(kayit){
+    const musteri = temizMetin(kayit.form.musteri);
+    if(!musteri) return;
+
+    const key = karsilastirmaMetni(musteri);
+    if(eklenen[key]) return;
+
+    if(arama && !key.includes(arama)) return;
+
+    eklenen[key] = true;
+
+    liste.push({
+      musteri: musteri,
+      vade: temizMetin(kayit.form.vade)
+    });
+  });
+
+  return liste.slice(0, 12);
+}
+
+function cariUrunOnerileriAl(musteri, yazilan){
+  const kayitlar = cariKayitlariAl(musteri);
+  const arama = karsilastirmaMetni(yazilan);
+  const liste = [];
+  const eklenen = {};
+
+  kayitlar.forEach(function(kayit){
+    kayit.form.urunler.forEach(function(urun){
+      const urunAdi = temizMetin(urun.urunAdi);
+      if(!urunAdi) return;
+
+      const key = karsilastirmaMetni(urunAdi);
+      if(eklenen[key]) return;
+
+      if(arama && !key.includes(arama)) return;
+
+      eklenen[key] = true;
+
+      liste.push({
+        urunAdi: urunAdi,
+        fiyat: temizMetin(urun.fiyat),
+        paraBirimi: temizMetin(urun.paraBirimi) || "$",
+        birim: temizMetin(urun.birim)
+      });
+    });
+  });
+
+  return liste.slice(0, 12);
+}
+
+function cariUrunDetayiBul(musteri, urunAdi){
+  const kayitlar = cariKayitlariAl(musteri);
+  const hedef = temizMetin(urunAdi);
+
+  for(let i = 0; i < kayitlar.length; i++){
+    const urunler = kayitlar[i].form.urunler;
+
+    for(let j = 0; j < urunler.length; j++){
+      if(ayniMi(urunler[j].urunAdi, hedef)){
+        return {
+          urunAdi: temizMetin(urunler[j].urunAdi),
+          fiyat: temizMetin(urunler[j].fiyat),
+          paraBirimi: temizMetin(urunler[j].paraBirimi) || "$",
+          birim: temizMetin(urunler[j].birim)
+        };
+      }
+    }
   }
 
-  if(Array.isArray(sevkler)){
-    sevkler.forEach(function(sevk){
-      const adres = temizMetin(sevk.sevkAdresi);
+  return null;
+}
+
+function cariSevkOnerileriAl(musteri, yazilan){
+  const kayitlar = cariKayitlariAl(musteri);
+  const arama = karsilastirmaMetni(yazilan);
+  const liste = [];
+  const eklenen = {};
+
+  kayitlar.forEach(function(kayit){
+    kayit.form.urunler.forEach(function(urun){
+      const adres = temizMetin(urun.sevkAdresi);
       if(!adres) return;
 
-      const kisi = temizMetin(sevk.sevkIlgiliKisi);
-      const telefon = temizMetin(sevk.sevkIlgiliTelefon);
+      const key = karsilastirmaMetni(adres);
+      if(eklenen[key]) return;
 
-      const eskiIndex = mevcut.sevkler.findIndex(function(x){
-        return ayniMi(x.sevkAdresi, adres);
-      });
+      if(arama && !key.includes(arama)) return;
 
-      let eski = null;
+      eklenen[key] = true;
 
-      if(eskiIndex >= 0){
-        eski = mevcut.sevkler[eskiIndex];
-        mevcut.sevkler.splice(eskiIndex, 1);
-      }
-
-      mevcut.sevkler.unshift({
+      liste.push({
         sevkAdresi: adres,
-        sevkIlgiliKisi: kisi || (eski ? eski.sevkIlgiliKisi : ""),
-        sevkIlgiliTelefon: telefon || (eski ? eski.sevkIlgiliTelefon : "")
+        sevkIlgiliKisi: temizMetin(urun.sevkIlgiliKisi),
+        sevkIlgiliTelefon: temizMetin(urun.sevkIlgiliTelefon)
       });
     });
-  }
-
-  if(mevcut.sevkler.length > 100){
-    mevcut.sevkler = mevcut.sevkler.slice(0, 100);
-  }
-
-  const mevcutIndex = historyData.musteriler.findIndex(function(item){
-    return ayniMi(item.musteri, temizMusteri);
   });
 
-  if(mevcutIndex >= 0){
-    historyData.musteriler.splice(mevcutIndex, 1);
-  }
-
-  historyData.musteriler.unshift(mevcut);
-
-  if(historyData.musteriler.length > 300){
-    historyData.musteriler = historyData.musteriler.slice(0, 300);
-  }
+  return liste.slice(0, 12);
 }
 
-function urunGecmiseEkle(urunAdi, fiyat, paraBirimi){
-  const temizUrunAdi = temizMetin(urunAdi);
-  if(!temizUrunAdi) return;
+function cariSevkDetayiBul(musteri, sevkAdresi){
+  const kayitlar = cariKayitlariAl(musteri);
+  const hedef = temizMetin(sevkAdresi);
 
-  const temizFiyat = temizMetin(fiyat);
-  const temizParaBirimi = temizMetin(paraBirimi) || "$";
+  for(let i = 0; i < kayitlar.length; i++){
+    const urunler = kayitlar[i].form.urunler;
 
-  const mevcutIndex = historyData.urunler.findIndex(function(item){
-    return ayniMi(item.urunAdi, temizUrunAdi);
-  });
-
-  if(mevcutIndex >= 0){
-    historyData.urunler.splice(mevcutIndex, 1);
+    for(let j = 0; j < urunler.length; j++){
+      if(ayniMi(urunler[j].sevkAdresi, hedef)){
+        return {
+          sevkAdresi: temizMetin(urunler[j].sevkAdresi),
+          sevkIlgiliKisi: temizMetin(urunler[j].sevkIlgiliKisi),
+          sevkIlgiliTelefon: temizMetin(urunler[j].sevkIlgiliTelefon)
+        };
+      }
+    }
   }
 
-  historyData.urunler.unshift({
-    urunAdi: temizUrunAdi,
-    fiyat: temizFiyat,
-    paraBirimi: temizParaBirimi
-  });
-
-  if(historyData.urunler.length > 300){
-    historyData.urunler = historyData.urunler.slice(0, 300);
-  }
-}
-
-function formdanGecmiseEkle(){
-  const musteri = deger("musteri");
-  const vade = deger("vade");
-
-  const sevkler = [];
-
-  document.querySelectorAll(".product-box").forEach(function(box){
-    const urunAdi = box.querySelector(".urunAdi").value;
-    const fiyat = box.querySelector(".fiyat").value;
-    const paraBirimi = box.querySelector(".paraBirimi").value;
-
-    urunGecmiseEkle(urunAdi, fiyat, paraBirimi);
-
-    sevkler.push({
-      sevkAdresi: box.querySelector(".kalemSevkAdresi").value,
-      sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value,
-      sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value
-    });
-  });
-
-  musteriGecmiseEkle(musteri, vade, sevkler);
-  gecmisleriKaydet();
-}
-
-function musteriSecilinceDoldur(input, item){
-  input.value = item.musteri || "";
-
-  const vadeEl = document.getElementById("vade");
-
-  if(vadeEl){
-    vadeEl.value = item.vade || "";
-  }
-
-  document.querySelectorAll(".suggestions").forEach(function(panel){
-    panel.style.display = "none";
-  });
-
-  otomatikKaydetPlanla();
-
-  kayitDurumuYaz("Cari geçmişten seçildi. Sadece bu cariye bağlı vade getirildi.", true);
-}
-
-function urunSecilinceDetaylariDoldur(input, item){
-  const box = input.closest(".product-box");
-  if(!box) return;
-
-  input.value = item.urunAdi || "";
-
-  const fiyatEl = box.querySelector(".fiyat");
-  const paraBirimiEl = box.querySelector(".paraBirimi");
-  const birimEl = box.querySelector(".birim");
-
-  if(fiyatEl){
-    fiyatEl.value = item.fiyat || "";
-  }
-
-  if(paraBirimiEl && item.paraBirimi){
-    paraBirimiEl.value = item.paraBirimi;
-  }
-
-  if(birimEl){
-    birimEl.value = "";
-  }
-
-  otomatikKaydetPlanla();
-
-  kayitDurumuYaz("Ürün geçmişten seçildi. Kayıtlı fiyat ve para birimi getirildi. Birim kullanıcı tarafından seçilmelidir.", true);
-}
-
-function sevkAdresiSecilinceDoldur(input, sevk){
-  const box = input.closest(".product-box");
-  if(!box) return;
-
-  input.value = sevk.sevkAdresi || "";
-
-  const kisiEl = box.querySelector(".kalemSevkIlgiliKisi");
-  const telefonEl = box.querySelector(".kalemSevkIlgiliTelefon");
-
-  if(kisiEl){
-    kisiEl.value = sevk.sevkIlgiliKisi || "";
-  }
-
-  if(telefonEl){
-    telefonEl.value = sevk.sevkIlgiliTelefon || "";
-  }
-
-  otomatikKaydetPlanla();
-
-  kayitDurumuYaz("Sevk adresi geçmişten seçildi. Sadece bu adrese bağlı kişi ve telefon getirildi.", true);
+  return null;
 }
 
 function panelHazirla(wrap){
@@ -707,22 +690,110 @@ function panelHazirla(wrap){
   return panel;
 }
 
+function tumPanelleriKapat(){
+  document.querySelectorAll(".suggestions").forEach(function(panel){
+    panel.style.display = "none";
+  });
+}
+
+function musteriSecilinceDoldur(input, item){
+  input.value = item.musteri || "";
+
+  const sonKayit = cariSonKaydiAl(item.musteri);
+  const vadeEl = document.getElementById("vade");
+
+  if(vadeEl){
+    if(sonKayit && temizMetin(sonKayit.form.vade)){
+      setAutoValue(vadeEl, sonKayit.form.vade);
+    }else{
+      vadeEl.value = "";
+      clearAutoValue(vadeEl);
+    }
+  }
+
+  tumPanelleriKapat();
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Cari seçildi. Bu cariye bağlı son vade otomatik getirildi.", true);
+}
+
+function urunSecilinceDoldur(input, item){
+  const box = input.closest(".product-box");
+  if(!box) return;
+
+  input.value = item.urunAdi || "";
+
+  const musteri = deger("musteri");
+  const detay = cariUrunDetayiBul(musteri, item.urunAdi) || item;
+
+  const fiyatEl = box.querySelector(".fiyat");
+  const paraBirimiEl = box.querySelector(".paraBirimi");
+  const birimEl = box.querySelector(".birim");
+
+  if(detay.fiyat){
+    setAutoValue(fiyatEl, detay.fiyat);
+  }else{
+    fiyatEl.value = "";
+    clearAutoValue(fiyatEl);
+  }
+
+  if(detay.paraBirimi){
+    setAutoValue(paraBirimiEl, detay.paraBirimi);
+  }
+
+  if(detay.birim){
+    setAutoValue(birimEl, detay.birim);
+  }else{
+    birimEl.value = "";
+    clearAutoValue(birimEl);
+  }
+
+  tumPanelleriKapat();
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Ürün seçildi. Bu cari + ürün bağına göre fiyat, para birimi ve birim otomatik getirildi.", true);
+}
+
+function sevkSecilinceDoldur(input, item){
+  const box = input.closest(".product-box");
+  if(!box) return;
+
+  input.value = item.sevkAdresi || "";
+  input.classList.add("autofilled");
+
+  const musteri = deger("musteri");
+  const detay = cariSevkDetayiBul(musteri, item.sevkAdresi) || item;
+
+  const kisiEl = box.querySelector(".kalemSevkIlgiliKisi");
+  const telefonEl = box.querySelector(".kalemSevkIlgiliTelefon");
+
+  if(detay.sevkIlgiliKisi){
+    setAutoValue(kisiEl, detay.sevkIlgiliKisi);
+  }else{
+    kisiEl.value = "";
+    clearAutoValue(kisiEl);
+  }
+
+  if(detay.sevkIlgiliTelefon){
+    setAutoValue(telefonEl, detay.sevkIlgiliTelefon);
+  }else{
+    telefonEl.value = "";
+    clearAutoValue(telefonEl);
+  }
+
+  tumPanelleriKapat();
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Sevk adresi seçildi. Bu cari + adres bağına göre ilgili kişi ve telefon otomatik getirildi.", true);
+}
+
 function cariOnerileriGoster(input){
   const wrap = input.closest(".suggest-wrap");
   if(!wrap) return;
 
   const panel = panelHazirla(wrap);
-  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const sonuc = cariOnerileriAl(input.value);
 
-  let sonuc = historyData.musteriler || [];
-
-  if(yazilan){
-    sonuc = sonuc.filter(function(item){
-      return item.musteri.toLocaleLowerCase("tr-TR").includes(yazilan);
-    });
-  }
-
-  sonuc = sonuc.slice(0, 12);
   panel.innerHTML = "";
 
   if(sonuc.length < 1){
@@ -740,7 +811,7 @@ function cariOnerileriGoster(input){
 
     const sub = document.createElement("div");
     sub.className = "suggestion-sub";
-    sub.textContent = item.vade ? "Vade: " + item.vade : "Bu cariye bağlı vade kaydı yok";
+    sub.textContent = item.vade ? "Son vade: " + item.vade : "Vade kaydı yok";
 
     div.appendChild(main);
     div.appendChild(sub);
@@ -748,7 +819,6 @@ function cariOnerileriGoster(input){
     div.addEventListener("mousedown", function(e){
       e.preventDefault();
       musteriSecilinceDoldur(input, item);
-      panel.style.display = "none";
     });
 
     panel.appendChild(div);
@@ -757,70 +827,21 @@ function cariOnerileriGoster(input){
   panel.style.display = "block";
 }
 
-function vadeOnerileriGoster(input){
-  const wrap = input.closest(".suggest-wrap");
-  if(!wrap) return;
-
-  const panel = panelHazirla(wrap);
-  const cari = musteriBul(deger("musteri"));
-
-  panel.innerHTML = "";
-
-  if(!cari || !cari.vade){
-    panel.style.display = "none";
-    return;
-  }
-
-  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
-  const cariVade = cari.vade;
-
-  if(yazilan && !cariVade.toLocaleLowerCase("tr-TR").includes(yazilan)){
-    panel.style.display = "none";
-    return;
-  }
-
-  const div = document.createElement("div");
-  div.className = "suggestion-item";
-
-  const main = document.createElement("div");
-  main.className = "suggestion-main";
-  main.textContent = cariVade;
-
-  const sub = document.createElement("div");
-  sub.className = "suggestion-sub";
-  sub.textContent = "Cari: " + cari.musteri;
-
-  div.appendChild(main);
-  div.appendChild(sub);
-
-  div.addEventListener("mousedown", function(e){
-    e.preventDefault();
-    input.value = cariVade;
-    panel.style.display = "none";
-    otomatikKaydetPlanla();
-  });
-
-  panel.appendChild(div);
-  panel.style.display = "block";
-}
-
 function urunOnerileriGoster(input){
   const wrap = input.closest(".suggest-wrap");
   if(!wrap) return;
 
   const panel = panelHazirla(wrap);
-  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const musteri = deger("musteri");
 
-  let sonuc = historyData.urunler || [];
+  panel.innerHTML = "";
 
-  if(yazilan){
-    sonuc = sonuc.filter(function(item){
-      return item.urunAdi.toLocaleLowerCase("tr-TR").includes(yazilan);
-    });
+  if(!temizMetin(musteri)){
+    panel.style.display = "none";
+    return;
   }
 
-  sonuc = sonuc.slice(0, 12);
-  panel.innerHTML = "";
+  const sonuc = cariUrunOnerileriAl(musteri, input.value);
 
   if(sonuc.length < 1){
     panel.style.display = "none";
@@ -838,19 +859,28 @@ function urunOnerileriGoster(input){
     const sub = document.createElement("div");
     sub.className = "suggestion-sub";
 
+    const detay = [];
+
     if(item.fiyat){
-      sub.textContent = "Fiyat: " + item.fiyat + " " + (item.paraBirimi || "$") + "  •  Birim: kullanıcı seçecek";
+      detay.push("Fiyat: " + item.fiyat + " " + (item.paraBirimi || "$"));
     }else{
-      sub.textContent = "Fiyat: sistem fiyatı  •  Birim: kullanıcı seçecek";
+      detay.push("Fiyat: sistem fiyatı");
     }
+
+    if(item.birim){
+      detay.push("Birim: " + item.birim);
+    }else{
+      detay.push("Birim kaydı yok");
+    }
+
+    sub.textContent = detay.join("  •  ");
 
     div.appendChild(main);
     div.appendChild(sub);
 
     div.addEventListener("mousedown", function(e){
       e.preventDefault();
-      urunSecilinceDetaylariDoldur(input, item);
-      panel.style.display = "none";
+      urunSecilinceDoldur(input, item);
     });
 
     panel.appendChild(div);
@@ -859,45 +889,21 @@ function urunOnerileriGoster(input){
   panel.style.display = "block";
 }
 
-function cariBazliSevkListesiAl(){
-  const musteri = deger("musteri");
-  const cari = musteriBul(musteri);
-
-  if(!cari){
-    return [];
-  }
-
-  if(!Array.isArray(cari.sevkler)){
-    return [];
-  }
-
-  return cari.sevkler.map(function(sevk){
-    return {
-      sevkAdresi: sevk.sevkAdresi,
-      sevkIlgiliKisi: sevk.sevkIlgiliKisi,
-      sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
-      musteri: cari.musteri
-    };
-  });
-}
-
 function sevkOnerileriGoster(input){
   const wrap = input.closest(".suggest-wrap");
   if(!wrap) return;
 
   const panel = panelHazirla(wrap);
-  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const musteri = deger("musteri");
 
-  let sonuc = cariBazliSevkListesiAl();
+  panel.innerHTML = "";
 
-  if(yazilan){
-    sonuc = sonuc.filter(function(item){
-      return item.sevkAdresi.toLocaleLowerCase("tr-TR").includes(yazilan);
-    });
+  if(!temizMetin(musteri)){
+    panel.style.display = "none";
+    return;
   }
 
-  sonuc = sonuc.slice(0, 12);
-  panel.innerHTML = "";
+  const sonuc = cariSevkOnerileriAl(musteri, input.value);
 
   if(sonuc.length < 1){
     panel.style.display = "none";
@@ -915,7 +921,7 @@ function sevkOnerileriGoster(input){
     const sub = document.createElement("div");
     sub.className = "suggestion-sub";
 
-    let detay = [];
+    const detay = [];
 
     if(item.sevkIlgiliKisi){
       detay.push("Kişi: " + item.sevkIlgiliKisi);
@@ -925,19 +931,14 @@ function sevkOnerileriGoster(input){
       detay.push("Tel: " + item.sevkIlgiliTelefon);
     }
 
-    if(item.musteri){
-      detay.push("Cari: " + item.musteri);
-    }
-
-    sub.textContent = detay.length > 0 ? detay.join("  •  ") : "Bu adrese bağlı kişi / telefon kaydı yok";
+    sub.textContent = detay.length > 0 ? detay.join("  •  ") : "Kişi / telefon kaydı yok";
 
     div.appendChild(main);
     div.appendChild(sub);
 
     div.addEventListener("mousedown", function(e){
       e.preventDefault();
-      sevkAdresiSecilinceDoldur(input, item);
-      panel.style.display = "none";
+      sevkSecilinceDoldur(input, item);
     });
 
     panel.appendChild(div);
@@ -951,8 +952,6 @@ function onerileriGoster(input){
 
   if(key === "musteri"){
     cariOnerileriGoster(input);
-  }else if(key === "vade"){
-    vadeOnerileriGoster(input);
   }else if(key === "urunAdi"){
     urunOnerileriGoster(input);
   }else if(key === "sevkAdresi"){
@@ -998,33 +997,6 @@ function autocompleteTumunuBagla(){
   });
 }
 
-function formVerisiniOku(){
-  const urunKutulari = document.querySelectorAll(".product-box");
-  const urunler = [];
-
-  urunKutulari.forEach(function(box){
-    urunler.push({
-      urunAdi: box.querySelector(".urunAdi").value.trim(),
-      miktar: box.querySelector(".miktar").value.trim(),
-      birim: box.querySelector(".birim").value.trim(),
-      fiyat: box.querySelector(".fiyat").value.trim(),
-      paraBirimi: box.querySelector(".paraBirimi").value.trim(),
-      sevkAdresi: box.querySelector(".kalemSevkAdresi").value.trim(),
-      sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value.trim(),
-      sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value.trim(),
-      urunNotu: box.querySelector(".urunNotu").value.trim()
-    });
-  });
-
-  return {
-    musteri: deger("musteri"),
-    vade: deger("vade"),
-    genelNot: deger("genelNot"),
-    urunler: urunler,
-    kayitTarihi: new Date().toISOString()
-  };
-}
-
 function formVerisiniKaydet(){
   if(yuklemeYapiliyor) return;
 
@@ -1036,10 +1008,7 @@ function formVerisiniKaydet(){
   try{
     const veri = formVerisiniOku();
     window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(veri));
-    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. Bağlı geçmiş öneriler korunuyor.", true);
-  }catch(e){
-    kayitDurumuYaz("Otomatik kayıt yapılamadı. Form yine mail taslağı oluşturabilir.", false);
-  }
+  }catch(e){}
 }
 
 function otomatikKaydetPlanla(){
@@ -1063,7 +1032,6 @@ function formVerisiniYukle(){
 
     if(!ham){
       urunEkle();
-      kayitDurumuYaz("Bilgiler bu cihazda otomatik saklanır. Bağlı geçmiş öneriler kayıt yaptıkça oluşur.", false);
       return;
     }
 
@@ -1086,12 +1054,12 @@ function formVerisiniYukle(){
 
     yuklemeYapiliyor = false;
 
-    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Bağlı geçmiş öneriler aktif.", true);
+    kayitDurumuYaz("Son taslak geri yüklendi. Tüm geçmiş form kayıtları bağlılıklarıyla saklanır.", true);
   }catch(e){
     yuklemeYapiliyor = false;
     document.getElementById("urunler").innerHTML = "";
     urunEkle();
-    kayitDurumuYaz("Kayıtlı bilgiler okunamadı. Yeni boş form açıldı.", false);
+    kayitDurumuYaz("Kayıtlı taslak okunamadı. Yeni boş form açıldı.", false);
   }
 }
 
@@ -1106,19 +1074,20 @@ function formKaydiniSil(){
 function gecmisiTemizle(){
   const adim1 = confirm(
     "DİKKAT! 1/3\n\n" +
-    "Bu işlem daha önce girilmiş geçmiş önerileri silecektir.\n\n" +
-    "Silinecek geçmiş öneriler:\n" +
-    "- Cari / müşteri kayıtları\n" +
-    "- Cariye bağlı vade kayıtları\n" +
-    "- Cariye bağlı sevk adresi, kişi ve telefon kayıtları\n" +
-    "- Ürün adı, fiyat ve para birimi kayıtları\n\n" +
-    "Mevcut form alanları silinmez.\n" +
+    "Bu işlem TÜM FORM GEÇMİŞİNİ silecektir.\n\n" +
+    "Silinecek kayıtlar:\n" +
+    "- Tüm eski form kayıtları\n" +
+    "- Cari - vade bağlantıları\n" +
+    "- Cari - ürün bağlantıları\n" +
+    "- Cari + ürün - fiyat / para birimi / birim bağlantıları\n" +
+    "- Cari - sevk adresi - ilgili kişi - telefon bağlantıları\n\n" +
+    "Mevcut açık form alanları silinmez.\n" +
     "Bu işlem geri alınamaz.\n\n" +
     "Devam etmek istiyor musunuz?"
   );
 
   if(!adim1){
-    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    kayitDurumuYaz("Geçmiş temizleme işlemi iptal edildi.", false);
     return;
   }
 
@@ -1127,18 +1096,18 @@ function gecmisiTemizle(){
     "Yanlışlıkla silmeyi önlemek için aşağıdaki metni aynen yazmanız gerekiyor.\n\n" +
     "Yazılacak metin:\n" +
     "GEÇMİŞİ SİL\n\n" +
-    "Bu işlem sadece öneri geçmişini siler; mevcut formu silmez."
+    "Bu işlem tüm bağlı form geçmişini siler."
   );
 
   if(adim2 !== "GEÇMİŞİ SİL"){
     alert("İşlem iptal edildi. Yazılan onay metni doğru değil.");
-    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    kayitDurumuYaz("Geçmiş temizleme işlemi iptal edildi.", false);
     return;
   }
 
   const adim3 = prompt(
     "SON ONAY! 3/3\n\n" +
-    "Geçmiş öneriler kalıcı olarak silinecek.\n" +
+    "Tüm bağlı form geçmişi kalıcı olarak silinecek.\n" +
     "Bu işlem geri alınamaz.\n\n" +
     "Son kez onaylamak için aşağıdaki metni aynen yazın:\n\n" +
     "EVET SİL"
@@ -1146,28 +1115,29 @@ function gecmisiTemizle(){
 
   if(adim3 !== "EVET SİL"){
     alert("İşlem iptal edildi. Son onay metni doğru değil.");
-    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    kayitDurumuYaz("Geçmiş temizleme işlemi iptal edildi.", false);
     return;
   }
 
   try{
     if(storageAktifMi()){
       window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+      window.localStorage.removeItem("alltech_siparis_form_gecmis_v4");
       window.localStorage.removeItem("alltech_siparis_form_gecmis_v3");
       window.localStorage.removeItem("alltech_siparis_form_gecmis_v2");
       window.localStorage.removeItem("alltech_siparis_form_gecmis_v1");
     }
   }catch(e){}
 
-  historyData = historyBosModel();
+  formGecmisi = [];
 
   document.querySelectorAll(".suggestions").forEach(function(panel){
     panel.style.display = "none";
     panel.innerHTML = "";
   });
 
-  alert("Geçmiş öneriler temizlendi. Mevcut form alanları korunmuştur.");
-  kayitDurumuYaz("Geçmiş öneriler temizlendi. Mevcut form alanları korunuyor.", false);
+  alert("Tüm bağlı form geçmişi temizlendi. Mevcut form alanları korunmuştur.");
+  kayitDurumuYaz("Tüm bağlı form geçmişi temizlendi. Mevcut form korunuyor.", false);
 }
 
 function temizleHatalar(){
@@ -1289,7 +1259,7 @@ function urunEkle(veri){
       </div>
 
       <div class="section-mini-title">Bu Ürüne Ait Sevk Bilgileri</div>
-      <div class="helper">Sevk önerileri sadece seçili cariye bağlı kayıtlardan gelir.</div>
+      <div class="helper">Sevk önerileri sadece seçili cariye ait eski form kayıtlarından gelir.</div>
 
       <label class="required">Sevk Adresi</label>
       <div class="suggest-wrap">
@@ -1498,7 +1468,7 @@ function mailTaslagiOlustur(){
     return;
   }
 
-  formdanGecmiseEkle();
+  const yeniKayit = formuGecmiseKaydet();
   formVerisiniKaydet();
 
   const sonuc = siparisMetniOlustur();
@@ -1510,6 +1480,10 @@ function mailTaslagiOlustur(){
     "&subject=" + encodeURIComponent(konu) +
     "&body=" + encodeURIComponent(sonuc.govde);
 
+  if(yeniKayit){
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi ve mail taslağı açılıyor.", true);
+  }
+
   window.location.href = mailto;
 }
 
@@ -1518,17 +1492,23 @@ function onizlemeGoster(){
     return;
   }
 
-  formdanGecmiseEkle();
+  const yeniKayit = formuGecmiseKaydet();
   formVerisiniKaydet();
 
   const sonuc = siparisMetniOlustur();
   const preview = document.getElementById("preview");
   preview.style.display = "block";
   preview.textContent = sonuc.govde;
+
+  if(yeniKayit){
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Önizleme gösteriliyor.", true);
+  }else{
+    kayitDurumuYaz("Bu form son kayıtla aynı olduğu için tekrar geçmişe eklenmedi. Önizleme gösteriliyor.", true);
+  }
 }
 
 function formuTemizle(){
-  const onay = confirm("Mevcut form temizlensin mi? Geçmiş öneriler silinmeyecek.");
+  const onay = confirm("Mevcut form temizlensin mi? Tüm geçmiş form kayıtları korunacak.");
   if(!onay) return;
 
   formKaydiniSil();
@@ -1549,14 +1529,21 @@ function formuTemizle(){
 
   yuklemeYapiliyor = false;
 
-  kayitDurumuYaz("Mevcut form temizlendi. Geçmiş öneriler korunuyor.", false);
+  kayitDurumuYaz("Mevcut form temizlendi. Tüm geçmiş form kayıtları korunuyor.", false);
 }
 
-document.addEventListener("input", otomatikKaydetPlanla);
-document.addEventListener("change", otomatikKaydetPlanla);
+document.addEventListener("input", function(e){
+  kullaniciDegistirdi(e);
+  otomatikKaydetPlanla();
+}, true);
+
+document.addEventListener("change", function(e){
+  kullaniciDegistirdi(e);
+  otomatikKaydetPlanla();
+}, true);
 
 document.addEventListener("DOMContentLoaded", function(){
-  gecmisleriYukle();
+  formGecmisiniYukle();
   formVerisiniYukle();
   autocompleteTumunuBagla();
 });
