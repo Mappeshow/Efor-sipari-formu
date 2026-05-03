@@ -163,6 +163,25 @@ button{
   background:#fee2e2;
   color:#991b1b;
 }
+.top-clear-button{
+  margin-top:14px;
+  margin-bottom:14px;
+}
+.history-clear-area{
+  display:flex;
+  justify-content:flex-start;
+  margin-top:14px;
+}
+.history-clear-button{
+  width:auto;
+  padding:8px 10px;
+  margin-top:0;
+  border-radius:10px;
+  font-size:11px;
+  font-weight:800;
+  background:#fee2e2;
+  color:#991b1b;
+}
 .note{
   margin-top:14px;
   font-size:12px;
@@ -290,6 +309,8 @@ button{
     <h1>Sipariş Oluştur</h1>
     <div class="subtitle">Formu doldur, Mail taslağı otomatik açılsın.</div>
 
+    <button class="danger top-clear-button" onclick="formuTemizle()">Formu Temizle</button>
+
     <div class="main-section">
       <label class="required">Müşteri / Cari Adı</label>
       <div class="suggest-wrap">
@@ -315,8 +336,6 @@ button{
 
     <button class="primary" onclick="mailTaslagiOlustur()">Mail Taslağı Oluştur</button>
     <button class="secondary" onclick="onizlemeGoster()">Mail Önizleme Göster</button>
-    <button class="danger" onclick="formuTemizle()">Formu Temizle</button>
-    <button class="danger" onclick="gecmisiTemizle()">Tüm Form Geçmişini Temizle</button>
 
     <div id="preview" class="preview"></div>
 
@@ -324,6 +343,10 @@ button{
       Kırmızı yıldızlı alanlar zorunludur. Ürün 1 silinemez. Fiyat, ürün notu ve genel sipariş notu isteğe bağlıdır.
       Otomatik doldurulan alanlar sarı görünür; kullanıcı elle değiştirirse beyaza döner.
       Bu form server kullanmaz. Geçmiş kayıtlar sadece bu cihazın tarayıcı hafızasında saklanır.
+    </div>
+
+    <div class="history-clear-area">
+      <button class="history-clear-button" onclick="gecmisiTemizle()">Tüm Form Geçmişini Temizle</button>
     </div>
   </div>
 
