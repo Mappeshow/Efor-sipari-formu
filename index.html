@@ -250,7 +250,7 @@ button{
   border-radius:14px;
   box-shadow:0 12px 24px rgba(15,23,42,0.16);
   z-index:9999;
-  max-height:230px;
+  max-height:240px;
   overflow:auto;
 }
 .suggestion-item{
@@ -275,11 +275,6 @@ button{
   margin-top:3px;
   line-height:1.25;
 }
-.suggestion-empty{
-  padding:11px 12px;
-  font-size:13px;
-  color:#64748b;
-}
 </style>
 </head>
 
@@ -302,7 +297,7 @@ button{
     </div>
 
     <div id="kayitDurumu" class="save-status passive">
-      Bilgiler bu cihazda otomatik saklanır. Önceki ürün ve müşteri girişleri öneri olarak görünür.
+      Cari seçilince vade gelir. Ürün seçilince fiyat ve para birimi gelir. Sevk adresi seçilince kişi ve telefon gelir.
     </div>
 
     <div id="urunler"></div>
@@ -338,19 +333,11 @@ let kayitTimer = null;
 let yuklemeYapiliyor = false;
 let historyData = {};
 
-const FORM_STORAGE_KEY = "alltech_siparis_form_kayit_v4";
-const HISTORY_STORAGE_KEY = "alltech_siparis_form_gecmis_v3";
+const FORM_STORAGE_KEY = "alltech_siparis_form_kayit_v5";
+const HISTORY_STORAGE_KEY = "alltech_siparis_form_gecmis_v4";
 
 const toRecipients = "hasan.uysal@alltech.com,selcuk.tanyeri@alltech.com";
 const ccRecipients = "erhan.mustecep@alltech.com,sbacinoglu@alltech.com";
-
-const textHistoryKeys = [
-  "musteri",
-  "vade",
-  "sevkAdresi",
-  "sevkIlgiliKisi",
-  "sevkIlgiliTelefon"
-];
 
 function deger(id){
   const el = document.getElementById(id);
@@ -391,11 +378,8 @@ function ayniMi(a, b){
 
 function historyBosModel(){
   return {
-    musteri: [],
-    vade: [],
-    sevkAdresi: [],
-    sevkIlgiliKisi: [],
-    sevkIlgiliTelefon: [],
+    musteriler: [],
+    vadeler: [],
     urunler: []
   };
 }
@@ -413,13 +397,35 @@ function gecmisleriYukle(){
     if(ham){
       const parsed = JSON.parse(ham);
 
-      textHistoryKeys.forEach(function(key){
-        if(Array.isArray(parsed[key])){
-          historyData[key] = parsed[key]
-            .map(temizMetin)
-            .filter(function(x){ return x.length > 0; });
-        }
-      });
+      if(Array.isArray(parsed.musteriler)){
+        historyData.musteriler = parsed.musteriler
+          .map(function(item){
+            return {
+              musteri: temizMetin(item.musteri),
+              vade: temizMetin(item.vade),
+              sevkler: Array.isArray(item.sevkler)
+                ? item.sevkler.map(function(sevk){
+                    return {
+                      sevkAdresi: temizMetin(sevk.sevkAdresi),
+                      sevkIlgiliKisi: temizMetin(sevk.sevkIlgiliKisi),
+                      sevkIlgiliTelefon: temizMetin(sevk.sevkIlgiliTelefon)
+                    };
+                  }).filter(function(sevk){
+                    return sevk.sevkAdresi.length > 0;
+                  })
+                : []
+            };
+          })
+          .filter(function(item){
+            return item.musteri.length > 0;
+          });
+      }
+
+      if(Array.isArray(parsed.vadeler)){
+        historyData.vadeler = parsed.vadeler
+          .map(temizMetin)
+          .filter(function(x){ return x.length > 0; });
+      }
 
       if(Array.isArray(parsed.urunler)){
         historyData.urunler = parsed.urunler
@@ -446,59 +452,57 @@ function gecmisleriYukle(){
       return;
     }
 
-    const eskiHam2 = window.localStorage.getItem("alltech_siparis_form_gecmis_v2");
-    const eskiHam1 = window.localStorage.getItem("alltech_siparis_form_gecmis_v1");
-    const eskiHam = eskiHam2 || eskiHam1;
+    eskiGecmisleriTasiyarakYukle();
+  }catch(e){
+    historyData = historyBosModel();
+  }
+}
 
-    if(eskiHam){
-      const eski = JSON.parse(eskiHam);
+function eskiGecmisleriTasiyarakYukle(){
+  const eskiKeyler = [
+    "alltech_siparis_form_gecmis_v3",
+    "alltech_siparis_form_gecmis_v2",
+    "alltech_siparis_form_gecmis_v1"
+  ];
 
-      textHistoryKeys.forEach(function(key){
-        if(Array.isArray(eski[key])){
-          historyData[key] = eski[key]
-            .map(temizMetin)
-            .filter(function(x){ return x.length > 0; });
-        }
-      });
+  for(let i = 0; i < eskiKeyler.length; i++){
+    const ham = window.localStorage.getItem(eskiKeyler[i]);
+    if(!ham) continue;
+
+    try{
+      const eski = JSON.parse(ham);
+
+      if(Array.isArray(eski.musteri)){
+        eski.musteri.forEach(function(musteri){
+          musteriGecmiseEkle(musteri, "", []);
+        });
+      }
+
+      if(Array.isArray(eski.vade)){
+        eski.vade.forEach(function(vade){
+          vadeGecmiseEkle(vade);
+        });
+      }
 
       if(Array.isArray(eski.urunler)){
-        historyData.urunler = eski.urunler
-          .map(function(item){
-            if(typeof item === "string"){
-              return {
-                urunAdi: temizMetin(item),
-                fiyat: "",
-                paraBirimi: "$"
-              };
-            }
+        eski.urunler.forEach(function(item){
+          if(typeof item === "string"){
+            urunGecmiseEkle(item, "", "$");
+          }else{
+            urunGecmiseEkle(item.urunAdi, item.fiyat, item.paraBirimi);
+          }
+        });
+      }
 
-            return {
-              urunAdi: temizMetin(item.urunAdi),
-              fiyat: temizMetin(item.fiyat),
-              paraBirimi: temizMetin(item.paraBirimi) || "$"
-            };
-          })
-          .filter(function(item){
-            return item.urunAdi.length > 0;
-          });
-      }else if(Array.isArray(eski.urunAdi)){
-        historyData.urunler = eski.urunAdi
-          .map(function(urunAdi){
-            return {
-              urunAdi: temizMetin(urunAdi),
-              fiyat: "",
-              paraBirimi: "$"
-            };
-          })
-          .filter(function(item){
-            return item.urunAdi.length > 0;
-          });
+      if(Array.isArray(eski.urunAdi)){
+        eski.urunAdi.forEach(function(urunAdi){
+          urunGecmiseEkle(urunAdi, "", "$");
+        });
       }
 
       gecmisleriKaydet();
-    }
-  }catch(e){
-    historyData = historyBosModel();
+      return;
+    }catch(e){}
   }
 }
 
@@ -512,36 +516,104 @@ function gecmisleriKaydet(){
   }catch(e){}
 }
 
-function textGecmiseEkle(key, value){
-  const temiz = temizMetin(value);
+function vadeGecmiseEkle(vade){
+  const temiz = temizMetin(vade);
   if(!temiz) return;
 
-  if(!historyData[key]){
-    historyData[key] = [];
-  }
-
-  const mevcutIndex = historyData[key].findIndex(function(x){
+  const mevcutIndex = historyData.vadeler.findIndex(function(x){
     return ayniMi(x, temiz);
   });
 
   if(mevcutIndex >= 0){
-    historyData[key].splice(mevcutIndex, 1);
+    historyData.vadeler.splice(mevcutIndex, 1);
   }
 
-  historyData[key].unshift(temiz);
+  historyData.vadeler.unshift(temiz);
 
-  if(historyData[key].length > 200){
-    historyData[key] = historyData[key].slice(0, 200);
+  if(historyData.vadeler.length > 100){
+    historyData.vadeler = historyData.vadeler.slice(0, 100);
+  }
+}
+
+function musteriBul(musteriAdi){
+  const temiz = temizMetin(musteriAdi);
+  if(!temiz) return null;
+
+  return historyData.musteriler.find(function(item){
+    return ayniMi(item.musteri, temiz);
+  }) || null;
+}
+
+function musteriGecmiseEkle(musteriAdi, vade, sevkler){
+  const temizMusteri = temizMetin(musteriAdi);
+  if(!temizMusteri) return;
+
+  const temizVade = temizMetin(vade);
+
+  let mevcut = musteriBul(temizMusteri);
+
+  if(!mevcut){
+    mevcut = {
+      musteri: temizMusteri,
+      vade: "",
+      sevkler: []
+    };
+  }
+
+  if(temizVade){
+    mevcut.vade = temizVade;
+    vadeGecmiseEkle(temizVade);
+  }
+
+  if(Array.isArray(sevkler)){
+    sevkler.forEach(function(sevk){
+      const adres = temizMetin(sevk.sevkAdresi);
+      if(!adres) return;
+
+      const kisi = temizMetin(sevk.sevkIlgiliKisi);
+      const telefon = temizMetin(sevk.sevkIlgiliTelefon);
+
+      const eskiIndex = mevcut.sevkler.findIndex(function(x){
+        return ayniMi(x.sevkAdresi, adres);
+      });
+
+      let eski = null;
+
+      if(eskiIndex >= 0){
+        eski = mevcut.sevkler[eskiIndex];
+        mevcut.sevkler.splice(eskiIndex, 1);
+      }
+
+      mevcut.sevkler.unshift({
+        sevkAdresi: adres,
+        sevkIlgiliKisi: kisi || (eski ? eski.sevkIlgiliKisi : ""),
+        sevkIlgiliTelefon: telefon || (eski ? eski.sevkIlgiliTelefon : "")
+      });
+    });
+  }
+
+  if(mevcut.sevkler.length > 100){
+    mevcut.sevkler = mevcut.sevkler.slice(0, 100);
+  }
+
+  const mevcutIndex = historyData.musteriler.findIndex(function(item){
+    return ayniMi(item.musteri, temizMusteri);
+  });
+
+  if(mevcutIndex >= 0){
+    historyData.musteriler.splice(mevcutIndex, 1);
+  }
+
+  historyData.musteriler.unshift(mevcut);
+
+  if(historyData.musteriler.length > 300){
+    historyData.musteriler = historyData.musteriler.slice(0, 300);
   }
 }
 
 function urunGecmiseEkle(urunAdi, fiyat, paraBirimi){
   const temizUrunAdi = temizMetin(urunAdi);
   if(!temizUrunAdi) return;
-
-  if(!Array.isArray(historyData.urunler)){
-    historyData.urunler = [];
-  }
 
   const temizFiyat = temizMetin(fiyat);
   const temizParaBirimi = temizMetin(paraBirimi) || "$";
@@ -566,8 +638,10 @@ function urunGecmiseEkle(urunAdi, fiyat, paraBirimi){
 }
 
 function formdanGecmiseEkle(){
-  textGecmiseEkle("musteri", deger("musteri"));
-  textGecmiseEkle("vade", deger("vade"));
+  const musteri = deger("musteri");
+  const vade = deger("vade");
+
+  const sevkler = [];
 
   document.querySelectorAll(".product-box").forEach(function(box){
     const urunAdi = box.querySelector(".urunAdi").value;
@@ -576,12 +650,33 @@ function formdanGecmiseEkle(){
 
     urunGecmiseEkle(urunAdi, fiyat, paraBirimi);
 
-    textGecmiseEkle("sevkAdresi", box.querySelector(".kalemSevkAdresi").value);
-    textGecmiseEkle("sevkIlgiliKisi", box.querySelector(".kalemSevkIlgiliKisi").value);
-    textGecmiseEkle("sevkIlgiliTelefon", box.querySelector(".kalemSevkIlgiliTelefon").value);
+    sevkler.push({
+      sevkAdresi: box.querySelector(".kalemSevkAdresi").value,
+      sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value,
+      sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value
+    });
   });
 
+  musteriGecmiseEkle(musteri, vade, sevkler);
   gecmisleriKaydet();
+}
+
+function musteriSecilinceDoldur(input, item){
+  input.value = item.musteri || "";
+
+  const vadeEl = document.getElementById("vade");
+
+  if(vadeEl && item.vade){
+    vadeEl.value = item.vade;
+  }
+
+  document.querySelectorAll(".suggestions").forEach(function(panel){
+    panel.style.display = "none";
+  });
+
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Cari geçmişten seçildi. Vade otomatik getirildi. Sevk adreslerinde bu cariye ait geçmişler öncelikli gösterilir.", true);
 }
 
 function urunSecilinceDetaylariDoldur(input, item){
@@ -611,34 +706,99 @@ function urunSecilinceDetaylariDoldur(input, item){
   kayitDurumuYaz("Ürün geçmişten seçildi. Kayıtlı fiyat ve para birimi getirildi. Birim kullanıcı tarafından seçilmelidir.", true);
 }
 
-function metinOnerileriGoster(input){
-  const key = input.getAttribute("data-history-key");
-  if(!key) return;
+function sevkAdresiSecilinceDoldur(input, sevk){
+  const box = input.closest(".product-box");
+  if(!box) return;
 
+  input.value = sevk.sevkAdresi || "";
+
+  const kisiEl = box.querySelector(".kalemSevkIlgiliKisi");
+  const telefonEl = box.querySelector(".kalemSevkIlgiliTelefon");
+
+  if(kisiEl){
+    kisiEl.value = sevk.sevkIlgiliKisi || "";
+  }
+
+  if(telefonEl){
+    telefonEl.value = sevk.sevkIlgiliTelefon || "";
+  }
+
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Sevk adresi geçmişten seçildi. İlgili kişi ve telefon otomatik getirildi.", true);
+}
+
+function vadeSecilinceDoldur(input, vade){
+  input.value = vade || "";
+  otomatikKaydetPlanla();
+}
+
+function cariOnerileriGoster(input){
   const wrap = input.closest(".suggest-wrap");
   if(!wrap) return;
 
-  let panel = wrap.querySelector(".suggestions");
-
-  if(!panel){
-    panel = document.createElement("div");
-    panel.className = "suggestions";
-    wrap.appendChild(panel);
-  }
-
+  const panel = panelHazirla(wrap);
   const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
-  const liste = Array.isArray(historyData[key]) ? historyData[key] : [];
 
-  let sonuc = liste;
+  let sonuc = historyData.musteriler || [];
 
   if(yazilan){
-    sonuc = liste.filter(function(item){
+    sonuc = sonuc.filter(function(item){
+      return item.musteri.toLocaleLowerCase("tr-TR").includes(yazilan);
+    });
+  }
+
+  sonuc = sonuc.slice(0, 12);
+  panel.innerHTML = "";
+
+  if(sonuc.length < 1){
+    panel.style.display = "none";
+    return;
+  }
+
+  sonuc.forEach(function(item){
+    const div = document.createElement("div");
+    div.className = "suggestion-item";
+
+    const main = document.createElement("div");
+    main.className = "suggestion-main";
+    main.textContent = item.musteri;
+
+    const sub = document.createElement("div");
+    sub.className = "suggestion-sub";
+    sub.textContent = item.vade ? "Vade: " + item.vade : "Vade kaydı yok";
+
+    div.appendChild(main);
+    div.appendChild(sub);
+
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault();
+      musteriSecilinceDoldur(input, item);
+      panel.style.display = "none";
+    });
+
+    panel.appendChild(div);
+  });
+
+  panel.style.display = "block";
+}
+
+function vadeOnerileriGoster(input){
+  const wrap = input.closest(".suggest-wrap");
+  if(!wrap) return;
+
+  const panel = panelHazirla(wrap);
+  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+
+  let sonuc = historyData.vadeler || [];
+
+  if(yazilan){
+    sonuc = sonuc.filter(function(item){
       return item.toLocaleLowerCase("tr-TR").includes(yazilan);
     });
   }
 
   sonuc = sonuc.slice(0, 12);
-
   panel.innerHTML = "";
 
   if(sonuc.length < 1){
@@ -658,9 +818,8 @@ function metinOnerileriGoster(input){
 
     div.addEventListener("mousedown", function(e){
       e.preventDefault();
-      input.value = item;
+      vadeSecilinceDoldur(input, item);
       panel.style.display = "none";
-      otomatikKaydetPlanla();
     });
 
     panel.appendChild(div);
@@ -673,27 +832,18 @@ function urunOnerileriGoster(input){
   const wrap = input.closest(".suggest-wrap");
   if(!wrap) return;
 
-  let panel = wrap.querySelector(".suggestions");
-
-  if(!panel){
-    panel = document.createElement("div");
-    panel.className = "suggestions";
-    wrap.appendChild(panel);
-  }
-
+  const panel = panelHazirla(wrap);
   const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
-  const liste = Array.isArray(historyData.urunler) ? historyData.urunler : [];
 
-  let sonuc = liste;
+  let sonuc = historyData.urunler || [];
 
   if(yazilan){
-    sonuc = liste.filter(function(item){
+    sonuc = sonuc.filter(function(item){
       return item.urunAdi.toLocaleLowerCase("tr-TR").includes(yazilan);
     });
   }
 
   sonuc = sonuc.slice(0, 12);
-
   panel.innerHTML = "";
 
   if(sonuc.length < 1){
@@ -712,17 +862,11 @@ function urunOnerileriGoster(input){
     const sub = document.createElement("div");
     sub.className = "suggestion-sub";
 
-    let detay = [];
-
     if(item.fiyat){
-      detay.push("Fiyat: " + item.fiyat + " " + (item.paraBirimi || "$"));
+      sub.textContent = "Fiyat: " + item.fiyat + " " + (item.paraBirimi || "$") + "  •  Birim: kullanıcı seçecek";
     }else{
-      detay.push("Fiyat: sistem fiyatı");
+      sub.textContent = "Fiyat: sistem fiyatı  •  Birim: kullanıcı seçecek";
     }
-
-    detay.push("Birim: kullanıcı seçecek");
-
-    sub.textContent = detay.join("  •  ");
 
     div.appendChild(main);
     div.appendChild(sub);
@@ -739,13 +883,137 @@ function urunOnerileriGoster(input){
   panel.style.display = "block";
 }
 
+function tumSevkleriTekListeYap(){
+  const liste = [];
+
+  historyData.musteriler.forEach(function(musteri){
+    if(!Array.isArray(musteri.sevkler)) return;
+
+    musteri.sevkler.forEach(function(sevk){
+      const mevcut = liste.find(function(x){
+        return ayniMi(x.sevkAdresi, sevk.sevkAdresi);
+      });
+
+      if(!mevcut){
+        liste.push({
+          sevkAdresi: sevk.sevkAdresi,
+          sevkIlgiliKisi: sevk.sevkIlgiliKisi,
+          sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
+          musteri: musteri.musteri
+        });
+      }
+    });
+  });
+
+  return liste;
+}
+
+function cariBazliSevkListesiAl(){
+  const musteri = deger("musteri");
+  const cari = musteriBul(musteri);
+
+  if(cari && Array.isArray(cari.sevkler) && cari.sevkler.length > 0){
+    return cari.sevkler.map(function(sevk){
+      return {
+        sevkAdresi: sevk.sevkAdresi,
+        sevkIlgiliKisi: sevk.sevkIlgiliKisi,
+        sevkIlgiliTelefon: sevk.sevkIlgiliTelefon,
+        musteri: cari.musteri
+      };
+    });
+  }
+
+  return tumSevkleriTekListeYap();
+}
+
+function sevkOnerileriGoster(input){
+  const wrap = input.closest(".suggest-wrap");
+  if(!wrap) return;
+
+  const panel = panelHazirla(wrap);
+  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+
+  let sonuc = cariBazliSevkListesiAl();
+
+  if(yazilan){
+    sonuc = sonuc.filter(function(item){
+      return item.sevkAdresi.toLocaleLowerCase("tr-TR").includes(yazilan);
+    });
+  }
+
+  sonuc = sonuc.slice(0, 12);
+  panel.innerHTML = "";
+
+  if(sonuc.length < 1){
+    panel.style.display = "none";
+    return;
+  }
+
+  sonuc.forEach(function(item){
+    const div = document.createElement("div");
+    div.className = "suggestion-item";
+
+    const main = document.createElement("div");
+    main.className = "suggestion-main";
+    main.textContent = item.sevkAdresi;
+
+    const sub = document.createElement("div");
+    sub.className = "suggestion-sub";
+
+    let detay = [];
+
+    if(item.sevkIlgiliKisi){
+      detay.push("Kişi: " + item.sevkIlgiliKisi);
+    }
+
+    if(item.sevkIlgiliTelefon){
+      detay.push("Tel: " + item.sevkIlgiliTelefon);
+    }
+
+    if(item.musteri){
+      detay.push("Cari: " + item.musteri);
+    }
+
+    sub.textContent = detay.length > 0 ? detay.join("  •  ") : "Kişi / telefon kaydı yok";
+
+    div.appendChild(main);
+    div.appendChild(sub);
+
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault();
+      sevkAdresiSecilinceDoldur(input, item);
+      panel.style.display = "none";
+    });
+
+    panel.appendChild(div);
+  });
+
+  panel.style.display = "block";
+}
+
+function panelHazirla(wrap){
+  let panel = wrap.querySelector(".suggestions");
+
+  if(!panel){
+    panel = document.createElement("div");
+    panel.className = "suggestions";
+    wrap.appendChild(panel);
+  }
+
+  return panel;
+}
+
 function onerileriGoster(input){
   const key = input.getAttribute("data-history-key");
 
-  if(key === "urunAdi"){
+  if(key === "musteri"){
+    cariOnerileriGoster(input);
+  }else if(key === "vade"){
+    vadeOnerileriGoster(input);
+  }else if(key === "urunAdi"){
     urunOnerileriGoster(input);
-  }else{
-    metinOnerileriGoster(input);
+  }else if(key === "sevkAdresi"){
+    sevkOnerileriGoster(input);
   }
 }
 
@@ -825,7 +1093,7 @@ function formVerisiniKaydet(){
   try{
     const veri = formVerisiniOku();
     window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(veri));
-    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. Geçmiş öneriler korunuyor.", true);
+    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. İlişkili geçmiş öneriler korunuyor.", true);
   }catch(e){
     kayitDurumuYaz("Otomatik kayıt yapılamadı. Form yine mail taslağı oluşturabilir.", false);
   }
@@ -875,7 +1143,7 @@ function formVerisiniYukle(){
 
     yuklemeYapiliyor = false;
 
-    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Ürün seçince sadece kayıtlı fiyat ve para birimi gelir.", true);
+    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Cari/ürün/sevk geçmişi ilişkili çalışır.", true);
   }catch(e){
     yuklemeYapiliyor = false;
     document.getElementById("urunler").innerHTML = "";
@@ -897,13 +1165,10 @@ function gecmisiTemizle(){
     "DİKKAT! 1/3\n\n" +
     "Bu işlem daha önce girilmiş geçmiş önerileri silecektir.\n\n" +
     "Silinecek geçmiş öneriler:\n" +
-    "- Müşteri / Cari Adı önerileri\n" +
-    "- Vade / Ödeme önerileri\n" +
-    "- Ürün Adı / Kodu önerileri\n" +
-    "- Ürün fiyat ve para birimi geçmişi\n" +
-    "- Sevk Adresi önerileri\n" +
-    "- Sevk İlgili Kişi önerileri\n" +
-    "- Sevk İlgili Kişi Telefonu önerileri\n\n" +
+    "- Cari / müşteri kayıtları\n" +
+    "- Cariyle bağlı vade kayıtları\n" +
+    "- Cariyle bağlı sevk adresi, kişi ve telefon kayıtları\n" +
+    "- Ürün adı, fiyat ve para birimi kayıtları\n\n" +
     "Mevcut form alanları silinmez.\n" +
     "Bu işlem geri alınamaz.\n\n" +
     "Devam etmek istiyor musunuz?"
@@ -945,6 +1210,7 @@ function gecmisiTemizle(){
   try{
     if(storageAktifMi()){
       window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+      window.localStorage.removeItem("alltech_siparis_form_gecmis_v3");
       window.localStorage.removeItem("alltech_siparis_form_gecmis_v2");
       window.localStorage.removeItem("alltech_siparis_form_gecmis_v1");
     }
@@ -1080,7 +1346,7 @@ function urunEkle(veri){
       </div>
 
       <div class="section-mini-title">Bu Ürüne Ait Sevk Bilgileri</div>
-      <div class="helper">Her ürün kalemi farklı adrese sevk edilebilir.</div>
+      <div class="helper">Cari seçildiyse bu alanda o cariye ait geçmiş sevk adresleri öncelikli gelir.</div>
 
       <label class="required">Sevk Adresi</label>
       <div class="suggest-wrap">
@@ -1088,14 +1354,10 @@ function urunEkle(veri){
       </div>
 
       <label class="required">Sevk İlgili Kişi</label>
-      <div class="suggest-wrap">
-        <input class="kalemSevkIlgiliKisi" data-history-key="sevkIlgiliKisi" type="text" placeholder="Ad Soyad" required autocomplete="off">
-      </div>
+      <input class="kalemSevkIlgiliKisi" type="text" placeholder="Ad Soyad" required autocomplete="off">
 
       <label class="required">Sevk İlgili Kişi Telefonu</label>
-      <div class="suggest-wrap">
-        <input class="kalemSevkIlgiliTelefon" data-history-key="sevkIlgiliTelefon" type="tel" placeholder="05xx xxx xx xx" required autocomplete="off">
-      </div>
+      <input class="kalemSevkIlgiliTelefon" type="tel" placeholder="05xx xxx xx xx" required autocomplete="off">
 
       <label>Ürün Notu</label>
       <input class="urunNotu" type="text" placeholder="Varsa not" autocomplete="off">
