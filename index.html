@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sipariş Oluştur</title>
+<style>
+body{
+  margin:0;
+  padding:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+  background:#eef1f5;
+  color:#111827;
+}
+.container{
+  max-width:560px;
+  margin:0 auto;
+  padding:16px;
+}
+.card{
+  background:#ffffff;
+  border-radius:22px;
+  padding:18px;
+  box-shadow:0 10px 28px rgba(0,0,0,0.12);
+}
+h1{
+  margin:0;
+  font-size:27px;
+  color:#111827;
+}
+.subtitle{
+  font-size:14px;
+  color:#6b7280;
+  margin-top:6px;
+  margin-bottom:18px;
+}
+label{
+  display:block;
+  margin-top:12px;
+  margin-bottom:5px;
+  font-size:13px;
+  font-weight:800;
+  color:#374151;
+}
+.required::after{
+  content:" *";
+  color:#dc2626;
+}
+input,textarea,select{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #cbd5e1;
+  border-radius:13px;
+  padding:12px;
+  font-size:16px;
+  background:#ffffff;
+  color:#111827;
+  outline:none;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:#2563eb;
+  box-shadow:0 0 0 3px rgba(37,99,235,0.15);
+}
+.invalid{
+  border-color:#dc2626 !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,0.15) !important;
+}
+textarea{
+  min-height:74px;
+  resize:vertical;
+}
+.row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.main-section{
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:12px;
+  margin-top:12px;
+}
+.product-box{
+  background:#ffffff;
+  border:2px solid #cbd5e1;
+  border-radius:18px;
+  padding:0;
+  margin-top:18px;
+  overflow:visible;
+  box-shadow:0 6px 18px rgba(15,23,42,0.08);
+}
+.product-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  background:#111827;
+  color:#ffffff;
+  padding:12px;
+  border-radius:16px 16px 0 0;
+}
+.product-title-wrap{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.product-badge{
+  min-width:30px;
+  height:30px;
+  border-radius:999px;
+  background:#2563eb;
+  color:#ffffff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+  font-weight:900;
+}
+.product-title{
+  font-weight:900;
+  font-size:16px;
+  color:#ffffff;
+}
+.product-content{
+  padding:13px;
+}
+.remove-btn{
+  width:auto;
+  margin:0;
+  padding:8px 11px;
+  border-radius:10px;
+  border:none;
+  background:#fee2e2;
+  color:#991b1b;
+  font-size:13px;
+  font-weight:900;
+}
+button{
+  width:100%;
+  border:none;
+  border-radius:15px;
+  padding:14px;
+  margin-top:15px;
+  font-size:17px;
+  font-weight:900;
+}
+.primary{
+  background:#2563eb;
+  color:white;
+}
+.secondary{
+  background:#e5e7eb;
+  color:#111827;
+}
+.danger{
+  background:#fee2e2;
+  color:#991b1b;
+}
+.note{
+  margin-top:14px;
+  font-size:12px;
+  line-height:1.45;
+  color:#6b7280;
+}
+.footer{
+  text-align:center;
+  font-size:12px;
+  color:#9ca3af;
+  margin-top:14px;
+}
+.preview{
+  white-space:pre-wrap;
+  background:#111827;
+  color:#f9fafb;
+  padding:12px;
+  border-radius:14px;
+  font-size:13px;
+  line-height:1.4;
+  margin-top:12px;
+  display:none;
+}
+.section-mini-title{
+  margin-top:16px;
+  margin-bottom:4px;
+  font-size:14px;
+  font-weight:900;
+  color:#111827;
+  background:#eef2ff;
+  border:1px solid #c7d2fe;
+  border-radius:12px;
+  padding:9px 10px;
+}
+.warning{
+  display:none;
+  background:#fef2f2;
+  color:#991b1b;
+  border:1px solid #fecaca;
+  border-radius:14px;
+  padding:12px;
+  margin-top:14px;
+  font-size:14px;
+  font-weight:800;
+  line-height:1.4;
+}
+.helper{
+  font-size:12px;
+  color:#64748b;
+  margin-top:4px;
+  line-height:1.35;
+}
+.price-note{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#9a3412;
+  border-radius:12px;
+  padding:9px 10px;
+  margin-top:8px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.save-status{
+  background:#ecfdf5;
+  border:1px solid #bbf7d0;
+  color:#166534;
+  border-radius:12px;
+  padding:9px 10px;
+  margin-top:12px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.save-status.passive{
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  color:#64748b;
+}
+.suggest-wrap{
+  position:relative;
+}
+.suggestions{
+  display:none;
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 4px);
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  border-radius:14px;
+  box-shadow:0 12px 24px rgba(15,23,42,0.16);
+  z-index:9999;
+  max-height:230px;
+  overflow:auto;
+}
+.suggestion-item{
+  padding:11px 12px;
+  font-size:15px;
+  border-bottom:1px solid #f1f5f9;
+  color:#111827;
+}
+.suggestion-item:last-child{
+  border-bottom:none;
+}
+.suggestion-item:active{
+  background:#eff6ff;
+}
+.suggestion-main{
+  font-weight:800;
+  color:#111827;
+}
+.suggestion-sub{
+  font-size:12px;
+  color:#64748b;
+  margin-top:3px;
+  line-height:1.25;
+}
+.suggestion-empty{
+  padding:11px 12px;
+  font-size:13px;
+  color:#64748b;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div class="card">
+    <h1>Sipariş Oluştur</h1>
+    <div class="subtitle">Formu doldur, Mail taslağı otomatik açılsın.</div>
+
+    <div class="main-section">
+      <label class="required">Müşteri / Cari Adı</label>
+      <div class="suggest-wrap">
+        <input id="musteri" data-history-key="musteri" type="text" placeholder="Müşteri adı" required autocomplete="off">
+      </div>
+
+      <label class="required">Vade / Ödeme</label>
+      <div class="suggest-wrap">
+        <input id="vade" data-history-key="vade" type="text" placeholder="Örn: 30 gün" required autocomplete="off">
+      </div>
+    </div>
+
+    <div id="kayitDurumu" class="save-status passive">
+      Bilgiler bu cihazda otomatik saklanır. Önceki ürün ve müşteri girişleri öneri olarak görünür.
+    </div>
+
+    <div id="urunler"></div>
+
+    <button class="secondary" onclick="urunEkle()">+ Ürün Ekle</button>
+
+    <label>Genel Sipariş Notu</label>
+    <textarea id="genelNot" placeholder="Varsa genel not"></textarea>
+
+    <div id="uyari" class="warning"></div>
+
+    <button class="primary" onclick="mailTaslagiOlustur()">Mail Taslağı Oluştur</button>
+    <button class="secondary" onclick="onizlemeGoster()">Mail Önizleme Göster</button>
+    <button class="danger" onclick="formuTemizle()">Formu Temizle</button>
+    <button class="danger" onclick="gecmisiTemizle()">Geçmiş Önerileri Temizle</button>
+
+    <div id="preview" class="preview"></div>
+
+    <div class="note">
+      Kırmızı yıldızlı alanlar zorunludur. Ürün 1 silinemez. Fiyat, ürün notu ve genel sipariş notu isteğe bağlıdır.
+      Fiyat boş bırakıldığında sistemdeki geçerli fiyat baz alınacaktır.
+      Ürün geçmişinden seçim yapılırsa sadece kayıtlı fiyat ve para birimi otomatik gelir. Birim kullanıcı tarafından seçilmelidir.
+      Bu form server kullanmaz. Bilgiler sadece bu cihazın tarayıcı hafızasında saklanır.
+    </div>
+  </div>
+
+  <div class="footer">Şirket içi sipariş formu</div>
+</div>
+
+<script>
+let urunSayisi = 0;
+let kayitTimer = null;
+let yuklemeYapiliyor = false;
+let historyData = {};
+
+const FORM_STORAGE_KEY = "alltech_siparis_form_kayit_v4";
+const HISTORY_STORAGE_KEY = "alltech_siparis_form_gecmis_v3";
+
+const toRecipients = "hasan.uysal@alltech.com,selcuk.tanyeri@alltech.com";
+const ccRecipients = "erhan.mustecep@alltech.com,sbacinoglu@alltech.com";
+
+const textHistoryKeys = [
+  "musteri",
+  "vade",
+  "sevkAdresi",
+  "sevkIlgiliKisi",
+  "sevkIlgiliTelefon"
+];
+
+function deger(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+
+function storageAktifMi(){
+  try{
+    const testKey = "__storage_test__";
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function kayitDurumuYaz(metin, aktif){
+  const el = document.getElementById("kayitDurumu");
+  if(!el) return;
+
+  el.textContent = metin;
+
+  if(aktif){
+    el.classList.remove("passive");
+  }else{
+    el.classList.add("passive");
+  }
+}
+
+function temizMetin(value){
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function ayniMi(a, b){
+  return temizMetin(a).toLocaleLowerCase("tr-TR") === temizMetin(b).toLocaleLowerCase("tr-TR");
+}
+
+function historyBosModel(){
+  return {
+    musteri: [],
+    vade: [],
+    sevkAdresi: [],
+    sevkIlgiliKisi: [],
+    sevkIlgiliTelefon: [],
+    urunler: []
+  };
+}
+
+function gecmisleriYukle(){
+  historyData = historyBosModel();
+
+  if(!storageAktifMi()){
+    return;
+  }
+
+  try{
+    const ham = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+
+    if(ham){
+      const parsed = JSON.parse(ham);
+
+      textHistoryKeys.forEach(function(key){
+        if(Array.isArray(parsed[key])){
+          historyData[key] = parsed[key]
+            .map(temizMetin)
+            .filter(function(x){ return x.length > 0; });
+        }
+      });
+
+      if(Array.isArray(parsed.urunler)){
+        historyData.urunler = parsed.urunler
+          .map(function(item){
+            if(typeof item === "string"){
+              return {
+                urunAdi: temizMetin(item),
+                fiyat: "",
+                paraBirimi: "$"
+              };
+            }
+
+            return {
+              urunAdi: temizMetin(item.urunAdi),
+              fiyat: temizMetin(item.fiyat),
+              paraBirimi: temizMetin(item.paraBirimi) || "$"
+            };
+          })
+          .filter(function(item){
+            return item.urunAdi.length > 0;
+          });
+      }
+
+      return;
+    }
+
+    const eskiHam2 = window.localStorage.getItem("alltech_siparis_form_gecmis_v2");
+    const eskiHam1 = window.localStorage.getItem("alltech_siparis_form_gecmis_v1");
+    const eskiHam = eskiHam2 || eskiHam1;
+
+    if(eskiHam){
+      const eski = JSON.parse(eskiHam);
+
+      textHistoryKeys.forEach(function(key){
+        if(Array.isArray(eski[key])){
+          historyData[key] = eski[key]
+            .map(temizMetin)
+            .filter(function(x){ return x.length > 0; });
+        }
+      });
+
+      if(Array.isArray(eski.urunler)){
+        historyData.urunler = eski.urunler
+          .map(function(item){
+            if(typeof item === "string"){
+              return {
+                urunAdi: temizMetin(item),
+                fiyat: "",
+                paraBirimi: "$"
+              };
+            }
+
+            return {
+              urunAdi: temizMetin(item.urunAdi),
+              fiyat: temizMetin(item.fiyat),
+              paraBirimi: temizMetin(item.paraBirimi) || "$"
+            };
+          })
+          .filter(function(item){
+            return item.urunAdi.length > 0;
+          });
+      }else if(Array.isArray(eski.urunAdi)){
+        historyData.urunler = eski.urunAdi
+          .map(function(urunAdi){
+            return {
+              urunAdi: temizMetin(urunAdi),
+              fiyat: "",
+              paraBirimi: "$"
+            };
+          })
+          .filter(function(item){
+            return item.urunAdi.length > 0;
+          });
+      }
+
+      gecmisleriKaydet();
+    }
+  }catch(e){
+    historyData = historyBosModel();
+  }
+}
+
+function gecmisleriKaydet(){
+  if(!storageAktifMi()){
+    return;
+  }
+
+  try{
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(historyData));
+  }catch(e){}
+}
+
+function textGecmiseEkle(key, value){
+  const temiz = temizMetin(value);
+  if(!temiz) return;
+
+  if(!historyData[key]){
+    historyData[key] = [];
+  }
+
+  const mevcutIndex = historyData[key].findIndex(function(x){
+    return ayniMi(x, temiz);
+  });
+
+  if(mevcutIndex >= 0){
+    historyData[key].splice(mevcutIndex, 1);
+  }
+
+  historyData[key].unshift(temiz);
+
+  if(historyData[key].length > 200){
+    historyData[key] = historyData[key].slice(0, 200);
+  }
+}
+
+function urunGecmiseEkle(urunAdi, fiyat, paraBirimi){
+  const temizUrunAdi = temizMetin(urunAdi);
+  if(!temizUrunAdi) return;
+
+  if(!Array.isArray(historyData.urunler)){
+    historyData.urunler = [];
+  }
+
+  const temizFiyat = temizMetin(fiyat);
+  const temizParaBirimi = temizMetin(paraBirimi) || "$";
+
+  const mevcutIndex = historyData.urunler.findIndex(function(item){
+    return ayniMi(item.urunAdi, temizUrunAdi);
+  });
+
+  if(mevcutIndex >= 0){
+    historyData.urunler.splice(mevcutIndex, 1);
+  }
+
+  historyData.urunler.unshift({
+    urunAdi: temizUrunAdi,
+    fiyat: temizFiyat,
+    paraBirimi: temizParaBirimi
+  });
+
+  if(historyData.urunler.length > 300){
+    historyData.urunler = historyData.urunler.slice(0, 300);
+  }
+}
+
+function formdanGecmiseEkle(){
+  textGecmiseEkle("musteri", deger("musteri"));
+  textGecmiseEkle("vade", deger("vade"));
+
+  document.querySelectorAll(".product-box").forEach(function(box){
+    const urunAdi = box.querySelector(".urunAdi").value;
+    const fiyat = box.querySelector(".fiyat").value;
+    const paraBirimi = box.querySelector(".paraBirimi").value;
+
+    urunGecmiseEkle(urunAdi, fiyat, paraBirimi);
+
+    textGecmiseEkle("sevkAdresi", box.querySelector(".kalemSevkAdresi").value);
+    textGecmiseEkle("sevkIlgiliKisi", box.querySelector(".kalemSevkIlgiliKisi").value);
+    textGecmiseEkle("sevkIlgiliTelefon", box.querySelector(".kalemSevkIlgiliTelefon").value);
+  });
+
+  gecmisleriKaydet();
+}
+
+function urunSecilinceDetaylariDoldur(input, item){
+  const box = input.closest(".product-box");
+  if(!box) return;
+
+  input.value = item.urunAdi || "";
+
+  const fiyatEl = box.querySelector(".fiyat");
+  const paraBirimiEl = box.querySelector(".paraBirimi");
+  const birimEl = box.querySelector(".birim");
+
+  if(fiyatEl){
+    fiyatEl.value = item.fiyat || "";
+  }
+
+  if(paraBirimiEl && item.paraBirimi){
+    paraBirimiEl.value = item.paraBirimi;
+  }
+
+  if(birimEl){
+    birimEl.value = "";
+  }
+
+  otomatikKaydetPlanla();
+
+  kayitDurumuYaz("Ürün geçmişten seçildi. Kayıtlı fiyat ve para birimi getirildi. Birim kullanıcı tarafından seçilmelidir.", true);
+}
+
+function metinOnerileriGoster(input){
+  const key = input.getAttribute("data-history-key");
+  if(!key) return;
+
+  const wrap = input.closest(".suggest-wrap");
+  if(!wrap) return;
+
+  let panel = wrap.querySelector(".suggestions");
+
+  if(!panel){
+    panel = document.createElement("div");
+    panel.className = "suggestions";
+    wrap.appendChild(panel);
+  }
+
+  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const liste = Array.isArray(historyData[key]) ? historyData[key] : [];
+
+  let sonuc = liste;
+
+  if(yazilan){
+    sonuc = liste.filter(function(item){
+      return item.toLocaleLowerCase("tr-TR").includes(yazilan);
+    });
+  }
+
+  sonuc = sonuc.slice(0, 12);
+
+  panel.innerHTML = "";
+
+  if(sonuc.length < 1){
+    panel.style.display = "none";
+    return;
+  }
+
+  sonuc.forEach(function(item){
+    const div = document.createElement("div");
+    div.className = "suggestion-item";
+
+    const main = document.createElement("div");
+    main.className = "suggestion-main";
+    main.textContent = item;
+
+    div.appendChild(main);
+
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault();
+      input.value = item;
+      panel.style.display = "none";
+      otomatikKaydetPlanla();
+    });
+
+    panel.appendChild(div);
+  });
+
+  panel.style.display = "block";
+}
+
+function urunOnerileriGoster(input){
+  const wrap = input.closest(".suggest-wrap");
+  if(!wrap) return;
+
+  let panel = wrap.querySelector(".suggestions");
+
+  if(!panel){
+    panel = document.createElement("div");
+    panel.className = "suggestions";
+    wrap.appendChild(panel);
+  }
+
+  const yazilan = temizMetin(input.value).toLocaleLowerCase("tr-TR");
+  const liste = Array.isArray(historyData.urunler) ? historyData.urunler : [];
+
+  let sonuc = liste;
+
+  if(yazilan){
+    sonuc = liste.filter(function(item){
+      return item.urunAdi.toLocaleLowerCase("tr-TR").includes(yazilan);
+    });
+  }
+
+  sonuc = sonuc.slice(0, 12);
+
+  panel.innerHTML = "";
+
+  if(sonuc.length < 1){
+    panel.style.display = "none";
+    return;
+  }
+
+  sonuc.forEach(function(item){
+    const div = document.createElement("div");
+    div.className = "suggestion-item";
+
+    const main = document.createElement("div");
+    main.className = "suggestion-main";
+    main.textContent = item.urunAdi;
+
+    const sub = document.createElement("div");
+    sub.className = "suggestion-sub";
+
+    let detay = [];
+
+    if(item.fiyat){
+      detay.push("Fiyat: " + item.fiyat + " " + (item.paraBirimi || "$"));
+    }else{
+      detay.push("Fiyat: sistem fiyatı");
+    }
+
+    detay.push("Birim: kullanıcı seçecek");
+
+    sub.textContent = detay.join("  •  ");
+
+    div.appendChild(main);
+    div.appendChild(sub);
+
+    div.addEventListener("mousedown", function(e){
+      e.preventDefault();
+      urunSecilinceDetaylariDoldur(input, item);
+      panel.style.display = "none";
+    });
+
+    panel.appendChild(div);
+  });
+
+  panel.style.display = "block";
+}
+
+function onerileriGoster(input){
+  const key = input.getAttribute("data-history-key");
+
+  if(key === "urunAdi"){
+    urunOnerileriGoster(input);
+  }else{
+    metinOnerileriGoster(input);
+  }
+}
+
+function onerileriGizle(input){
+  const wrap = input.closest(".suggest-wrap");
+  if(!wrap) return;
+
+  const panel = wrap.querySelector(".suggestions");
+  if(panel){
+    setTimeout(function(){
+      panel.style.display = "none";
+    }, 160);
+  }
+}
+
+function autocompleteBagla(input){
+  if(!input || input.getAttribute("data-autocomplete-ready") === "1"){
+    return;
+  }
+
+  input.setAttribute("data-autocomplete-ready", "1");
+
+  input.addEventListener("focus", function(){
+    onerileriGoster(input);
+  });
+
+  input.addEventListener("input", function(){
+    onerileriGoster(input);
+  });
+
+  input.addEventListener("blur", function(){
+    onerileriGizle(input);
+  });
+}
+
+function autocompleteTumunuBagla(){
+  document.querySelectorAll("[data-history-key]").forEach(function(input){
+    autocompleteBagla(input);
+  });
+}
+
+function formVerisiniOku(){
+  const urunKutulari = document.querySelectorAll(".product-box");
+  const urunler = [];
+
+  urunKutulari.forEach(function(box){
+    urunler.push({
+      urunAdi: box.querySelector(".urunAdi").value.trim(),
+      miktar: box.querySelector(".miktar").value.trim(),
+      birim: box.querySelector(".birim").value.trim(),
+      fiyat: box.querySelector(".fiyat").value.trim(),
+      paraBirimi: box.querySelector(".paraBirimi").value.trim(),
+      sevkAdresi: box.querySelector(".kalemSevkAdresi").value.trim(),
+      sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value.trim(),
+      sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value.trim(),
+      urunNotu: box.querySelector(".urunNotu").value.trim()
+    });
+  });
+
+  return {
+    musteri: deger("musteri"),
+    vade: deger("vade"),
+    genelNot: deger("genelNot"),
+    urunler: urunler,
+    kayitTarihi: new Date().toISOString()
+  };
+}
+
+function formVerisiniKaydet(){
+  if(yuklemeYapiliyor) return;
+
+  if(!storageAktifMi()){
+    kayitDurumuYaz("Bu Safari açılışında otomatik kayıt desteklenmiyor. Form yine çalışır, ancak bilgiler kalıcı saklanmayabilir.", false);
+    return;
+  }
+
+  try{
+    const veri = formVerisiniOku();
+    window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(veri));
+    kayitDurumuYaz("Son form bilgileri bu cihazda otomatik saklandı. Geçmiş öneriler korunuyor.", true);
+  }catch(e){
+    kayitDurumuYaz("Otomatik kayıt yapılamadı. Form yine mail taslağı oluşturabilir.", false);
+  }
+}
+
+function otomatikKaydetPlanla(){
+  if(yuklemeYapiliyor) return;
+
+  clearTimeout(kayitTimer);
+  kayitTimer = setTimeout(function(){
+    formVerisiniKaydet();
+  }, 350);
+}
+
+function formVerisiniYukle(){
+  if(!storageAktifMi()){
+    kayitDurumuYaz("Bu Safari açılışında otomatik kayıt desteklenmiyor. Form yine çalışır.", false);
+    urunEkle();
+    return;
+  }
+
+  try{
+    const ham = window.localStorage.getItem(FORM_STORAGE_KEY);
+
+    if(!ham){
+      urunEkle();
+      kayitDurumuYaz("Bilgiler bu cihazda otomatik saklanır. Geçmiş öneriler yazdıkça oluşur.", false);
+      return;
+    }
+
+    const veri = JSON.parse(ham);
+
+    yuklemeYapiliyor = true;
+
+    document.getElementById("musteri").value = veri.musteri || "";
+    document.getElementById("vade").value = veri.vade || "";
+    document.getElementById("genelNot").value = veri.genelNot || "";
+    document.getElementById("urunler").innerHTML = "";
+
+    const urunler = Array.isArray(veri.urunler) && veri.urunler.length > 0
+      ? veri.urunler
+      : [{}];
+
+    urunler.forEach(function(urun){
+      urunEkle(urun);
+    });
+
+    yuklemeYapiliyor = false;
+
+    kayitDurumuYaz("Önceki form bilgileri geri yüklendi. Ürün seçince sadece kayıtlı fiyat ve para birimi gelir.", true);
+  }catch(e){
+    yuklemeYapiliyor = false;
+    document.getElementById("urunler").innerHTML = "";
+    urunEkle();
+    kayitDurumuYaz("Kayıtlı bilgiler okunamadı. Yeni boş form açıldı.", false);
+  }
+}
+
+function formKaydiniSil(){
+  try{
+    if(storageAktifMi()){
+      window.localStorage.removeItem(FORM_STORAGE_KEY);
+    }
+  }catch(e){}
+}
+
+function gecmisiTemizle(){
+  const adim1 = confirm(
+    "DİKKAT! 1/3\n\n" +
+    "Bu işlem daha önce girilmiş geçmiş önerileri silecektir.\n\n" +
+    "Silinecek geçmiş öneriler:\n" +
+    "- Müşteri / Cari Adı önerileri\n" +
+    "- Vade / Ödeme önerileri\n" +
+    "- Ürün Adı / Kodu önerileri\n" +
+    "- Ürün fiyat ve para birimi geçmişi\n" +
+    "- Sevk Adresi önerileri\n" +
+    "- Sevk İlgili Kişi önerileri\n" +
+    "- Sevk İlgili Kişi Telefonu önerileri\n\n" +
+    "Mevcut form alanları silinmez.\n" +
+    "Bu işlem geri alınamaz.\n\n" +
+    "Devam etmek istiyor musunuz?"
+  );
+
+  if(!adim1){
+    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    return;
+  }
+
+  const adim2 = prompt(
+    "DİKKAT! 2/3\n\n" +
+    "Yanlışlıkla silmeyi önlemek için aşağıdaki metni aynen yazmanız gerekiyor.\n\n" +
+    "Yazılacak metin:\n" +
+    "GEÇMİŞİ SİL\n\n" +
+    "Bu işlem sadece öneri geçmişini siler; mevcut formu silmez."
+  );
+
+  if(adim2 !== "GEÇMİŞİ SİL"){
+    alert("İşlem iptal edildi. Yazılan onay metni doğru değil.");
+    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    return;
+  }
+
+  const adim3 = prompt(
+    "SON ONAY! 3/3\n\n" +
+    "Geçmiş öneriler kalıcı olarak silinecek.\n" +
+    "Bu işlem geri alınamaz.\n\n" +
+    "Son kez onaylamak için aşağıdaki metni aynen yazın:\n\n" +
+    "EVET SİL"
+  );
+
+  if(adim3 !== "EVET SİL"){
+    alert("İşlem iptal edildi. Son onay metni doğru değil.");
+    kayitDurumuYaz("Geçmiş önerileri temizleme işlemi iptal edildi.", false);
+    return;
+  }
+
+  try{
+    if(storageAktifMi()){
+      window.localStorage.removeItem(HISTORY_STORAGE_KEY);
+      window.localStorage.removeItem("alltech_siparis_form_gecmis_v2");
+      window.localStorage.removeItem("alltech_siparis_form_gecmis_v1");
+    }
+  }catch(e){}
+
+  historyData = historyBosModel();
+
+  document.querySelectorAll(".suggestions").forEach(function(panel){
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  });
+
+  alert("Geçmiş öneriler temizlendi. Mevcut form alanları korunmuştur.");
+  kayitDurumuYaz("Geçmiş öneriler temizlendi. Mevcut form alanları korunuyor.", false);
+}
+
+function temizleHatalar(){
+  document.querySelectorAll(".invalid").forEach(function(el){
+    el.classList.remove("invalid");
+  });
+
+  const uyari = document.getElementById("uyari");
+  uyari.style.display = "none";
+  uyari.textContent = "";
+}
+
+function hataEkle(el){
+  if(el){
+    el.classList.add("invalid");
+  }
+}
+
+function uyariGoster(mesajlar){
+  const uyari = document.getElementById("uyari");
+  uyari.style.display = "block";
+  uyari.innerHTML = mesajlar.join("<br>");
+  uyari.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+function urunBasliklariniYenile(){
+  const kutular = document.querySelectorAll(".product-box");
+
+  kutular.forEach(function(box, index){
+    const title = box.querySelector(".product-title");
+    const badge = box.querySelector(".product-badge");
+    const removeBtn = box.querySelector(".remove-btn");
+
+    if(title){
+      title.textContent = "Ürün Kalemi " + (index + 1);
+    }
+
+    if(badge){
+      badge.textContent = index + 1;
+    }
+
+    if(removeBtn){
+      if(index === 0){
+        removeBtn.style.display = "none";
+      }else{
+        removeBtn.style.display = "inline-block";
+      }
+    }
+  });
+}
+
+function urunEkle(veri){
+  urunSayisi++;
+
+  veri = veri || {};
+
+  const mevcutUrunSayisi = document.querySelectorAll(".product-box").length;
+  const silButonuHtml = mevcutUrunSayisi === 0
+    ? ""
+    : `<button type="button" class="remove-btn" onclick="urunSil(this)">Sil</button>`;
+
+  const urunler = document.getElementById("urunler");
+  const box = document.createElement("div");
+  box.className = "product-box";
+
+  box.innerHTML = `
+    <div class="product-head">
+      <div class="product-title-wrap">
+        <div class="product-badge">${mevcutUrunSayisi + 1}</div>
+        <div class="product-title">Ürün Kalemi ${mevcutUrunSayisi + 1}</div>
+      </div>
+      ${silButonuHtml}
+    </div>
+
+    <div class="product-content">
+      <div class="section-mini-title">Ürün Bilgileri</div>
+
+      <label class="required">Ürün Adı / Kodu</label>
+      <div class="suggest-wrap">
+        <input class="urunAdi" data-history-key="urunAdi" type="text" placeholder="Ürün adı veya kodu" required autocomplete="off">
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="required">Miktar</label>
+          <input class="miktar" type="text" placeholder="Örn: 500" required autocomplete="off">
+        </div>
+        <div>
+          <label class="required">Birim</label>
+          <select class="birim" required>
+            <option value="">Birim seçin</option>
+            <option value="kg">kg</option>
+            <option value="ton">ton</option>
+            <option value="adet">adet</option>
+            <option value="çuval">çuval</option>
+            <option value="koli">koli</option>
+            <option value="palet">palet</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>Fiyat Bilgisi</label>
+          <input class="fiyat" type="text" placeholder="Örn: 1250" autocomplete="off">
+        </div>
+        <div>
+          <label>Para Birimi</label>
+          <select class="paraBirimi">
+            <option value="$">$</option>
+            <option value="€">€</option>
+            <option value="TL">TL</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="price-note">
+        Fiyat boş bırakıldığında sistemdeki geçerli fiyat baz alınacaktır.
+      </div>
+
+      <div class="section-mini-title">Bu Ürüne Ait Sevk Bilgileri</div>
+      <div class="helper">Her ürün kalemi farklı adrese sevk edilebilir.</div>
+
+      <label class="required">Sevk Adresi</label>
+      <div class="suggest-wrap">
+        <textarea class="kalemSevkAdresi" data-history-key="sevkAdresi" placeholder="Bu ürün kalemi için sevk adresi" required></textarea>
+      </div>
+
+      <label class="required">Sevk İlgili Kişi</label>
+      <div class="suggest-wrap">
+        <input class="kalemSevkIlgiliKisi" data-history-key="sevkIlgiliKisi" type="text" placeholder="Ad Soyad" required autocomplete="off">
+      </div>
+
+      <label class="required">Sevk İlgili Kişi Telefonu</label>
+      <div class="suggest-wrap">
+        <input class="kalemSevkIlgiliTelefon" data-history-key="sevkIlgiliTelefon" type="tel" placeholder="05xx xxx xx xx" required autocomplete="off">
+      </div>
+
+      <label>Ürün Notu</label>
+      <input class="urunNotu" type="text" placeholder="Varsa not" autocomplete="off">
+    </div>
+  `;
+
+  urunler.appendChild(box);
+
+  box.querySelector(".urunAdi").value = veri.urunAdi || "";
+  box.querySelector(".miktar").value = veri.miktar || "";
+  box.querySelector(".birim").value = veri.birim || "";
+  box.querySelector(".fiyat").value = veri.fiyat || "";
+  box.querySelector(".paraBirimi").value = veri.paraBirimi || "$";
+  box.querySelector(".kalemSevkAdresi").value = veri.sevkAdresi || "";
+  box.querySelector(".kalemSevkIlgiliKisi").value = veri.sevkIlgiliKisi || "";
+  box.querySelector(".kalemSevkIlgiliTelefon").value = veri.sevkIlgiliTelefon || "";
+  box.querySelector(".urunNotu").value = veri.urunNotu || "";
+
+  urunBasliklariniYenile();
+  autocompleteTumunuBagla();
+  otomatikKaydetPlanla();
+}
+
+function urunSil(btn){
+  const kutular = document.querySelectorAll(".product-box");
+
+  if(kutular.length <= 1){
+    alert("En az 1 ürün kalemi olmalıdır. Ürün 1 silinemez.");
+    return;
+  }
+
+  const box = btn.closest(".product-box");
+
+  if(!box){
+    return;
+  }
+
+  const ilkUrun = document.querySelector(".product-box");
+
+  if(box === ilkUrun){
+    alert("Ürün 1 silinemez.");
+    return;
+  }
+
+  box.remove();
+  urunBasliklariniYenile();
+  otomatikKaydetPlanla();
+}
+
+function formuDogrula(){
+  temizleHatalar();
+
+  const mesajlar = [];
+
+  const musteriEl = document.getElementById("musteri");
+  const vadeEl = document.getElementById("vade");
+
+  if(!musteriEl.value.trim()){
+    hataEkle(musteriEl);
+    mesajlar.push("Müşteri / Cari Adı zorunludur.");
+  }
+
+  if(!vadeEl.value.trim()){
+    hataEkle(vadeEl);
+    mesajlar.push("Vade / Ödeme zorunludur.");
+  }
+
+  const urunKutulari = document.querySelectorAll(".product-box");
+
+  if(urunKutulari.length < 1){
+    mesajlar.push("En az bir ürün kalemi eklemelisiniz.");
+  }
+
+  urunKutulari.forEach(function(box, index){
+    const no = index + 1;
+
+    const urunAdi = box.querySelector(".urunAdi");
+    const miktar = box.querySelector(".miktar");
+    const birim = box.querySelector(".birim");
+    const sevkAdresi = box.querySelector(".kalemSevkAdresi");
+    const sevkIlgiliKisi = box.querySelector(".kalemSevkIlgiliKisi");
+    const sevkIlgiliTelefon = box.querySelector(".kalemSevkIlgiliTelefon");
+
+    if(!urunAdi.value.trim()){
+      hataEkle(urunAdi);
+      mesajlar.push("Ürün " + no + ": Ürün Adı / Kodu zorunludur.");
+    }
+
+    if(!miktar.value.trim()){
+      hataEkle(miktar);
+      mesajlar.push("Ürün " + no + ": Miktar zorunludur.");
+    }
+
+    if(!birim.value.trim()){
+      hataEkle(birim);
+      mesajlar.push("Ürün " + no + ": Birim seçilmelidir.");
+    }
+
+    if(!sevkAdresi.value.trim()){
+      hataEkle(sevkAdresi);
+      mesajlar.push("Ürün " + no + ": Sevk Adresi zorunludur.");
+    }
+
+    if(!sevkIlgiliKisi.value.trim()){
+      hataEkle(sevkIlgiliKisi);
+      mesajlar.push("Ürün " + no + ": Sevk İlgili Kişi zorunludur.");
+    }
+
+    if(!sevkIlgiliTelefon.value.trim()){
+      hataEkle(sevkIlgiliTelefon);
+      mesajlar.push("Ürün " + no + ": Sevk İlgili Kişi Telefonu zorunludur.");
+    }
+  });
+
+  if(mesajlar.length > 0){
+    uyariGoster(mesajlar);
+    return false;
+  }
+
+  return true;
+}
+
+function siparisMetniOlustur(){
+  const musteri = deger("musteri");
+  const vade = deger("vade");
+  const genelNot = deger("genelNot");
+
+  const urunKutulari = document.querySelectorAll(".product-box");
+
+  let urunMetni = "";
+  let doluUrunSayisi = 0;
+
+  urunKutulari.forEach(function(box){
+    const urunAdi = box.querySelector(".urunAdi").value.trim();
+    const miktar = box.querySelector(".miktar").value.trim();
+    const birim = box.querySelector(".birim").value.trim();
+    const fiyat = box.querySelector(".fiyat").value.trim();
+    const paraBirimi = box.querySelector(".paraBirimi").value.trim();
+    const sevkAdresi = box.querySelector(".kalemSevkAdresi").value.trim();
+    const sevkIlgiliKisi = box.querySelector(".kalemSevkIlgiliKisi").value.trim();
+    const sevkIlgiliTelefon = box.querySelector(".kalemSevkIlgiliTelefon").value.trim();
+    const urunNotu = box.querySelector(".urunNotu").value.trim();
+
+    doluUrunSayisi++;
+
+    urunMetni += "ÜRÜN KALEMİ " + doluUrunSayisi + "\n";
+    urunMetni += "------------------------------\n";
+    urunMetni += "Ürün: " + urunAdi + "\n";
+    urunMetni += "Miktar: " + miktar + " " + birim + "\n";
+
+    if(fiyat){
+      urunMetni += "Fiyat: " + fiyat + " " + paraBirimi + "\n";
+    }else{
+      urunMetni += "Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
+    }
+
+    urunMetni += "Sevk Adresi: " + sevkAdresi + "\n";
+    urunMetni += "Sevk İlgili Kişi: " + sevkIlgiliKisi + "\n";
+    urunMetni += "Sevk İlgili Kişi Telefonu: " + sevkIlgiliTelefon + "\n";
+
+    if(urunNotu){
+      urunMetni += "Ürün Notu: " + urunNotu + "\n";
+    }
+
+    urunMetni += "\n";
+  });
+
+  const genelNotBolumu = genelNot
+    ? `GENEL NOT
+==============================
+${genelNot}
+
+`
+    : "";
+
+  const govde =
+`Merhaba,
+
+Aşağıdaki siparişin işleme alınmasını rica ederim.
+
+SİPARİŞ KALEMLERİ
+==============================
+${urunMetni}${genelNotBolumu}Saygılarımla`;
+
+  return {
+    musteri: musteri,
+    vade: vade,
+    urunSayisi: doluUrunSayisi,
+    govde: govde
+  };
+}
+
+function mailTaslagiOlustur(){
+  if(!formuDogrula()){
+    return;
+  }
+
+  formdanGecmiseEkle();
+  formVerisiniKaydet();
+
+  const sonuc = siparisMetniOlustur();
+  const konu = "Sipariş Talebi - " + sonuc.musteri + " - Vade: " + sonuc.vade;
+
+  const mailto =
+    "mailto:" + toRecipients +
+    "?cc=" + ccRecipients +
+    "&subject=" + encodeURIComponent(konu) +
+    "&body=" + encodeURIComponent(sonuc.govde);
+
+  window.location.href = mailto;
+}
+
+function onizlemeGoster(){
+  if(!formuDogrula()){
+    return;
+  }
+
+  formdanGecmiseEkle();
+  formVerisiniKaydet();
+
+  const sonuc = siparisMetniOlustur();
+  const preview = document.getElementById("preview");
+  preview.style.display = "block";
+  preview.textContent = sonuc.govde;
+}
+
+function formuTemizle(){
+  const onay = confirm("Mevcut form temizlensin mi? Geçmiş öneriler silinmeyecek.");
+  if(!onay) return;
+
+  formKaydiniSil();
+
+  yuklemeYapiliyor = true;
+
+  document.getElementById("musteri").value = "";
+  document.getElementById("vade").value = "";
+  document.getElementById("genelNot").value = "";
+  document.getElementById("urunler").innerHTML = "";
+  document.getElementById("preview").style.display = "none";
+  document.getElementById("preview").textContent = "";
+
+  temizleHatalar();
+
+  urunSayisi = 0;
+  urunEkle();
+
+  yuklemeYapiliyor = false;
+
+  kayitDurumuYaz("Mevcut form temizlendi. Geçmiş öneriler korunuyor.", false);
+}
+
+document.addEventListener("input", otomatikKaydetPlanla);
+document.addEventListener("change", otomatikKaydetPlanla);
+
+document.addEventListener("DOMContentLoaded", function(){
+  gecmisleriYukle();
+  formVerisiniYukle();
+  autocompleteTumunuBagla();
+});
+</script>
+</body>
+</html>
