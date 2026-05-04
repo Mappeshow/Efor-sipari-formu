@@ -1667,16 +1667,16 @@ function siparisMetniOlustur(){
   let urunMetni = "";
 
   sevkGruplari.forEach(function(grup, grupIndex){
-    urunMetni += "SEVK ADRESİ " + (grupIndex + 1) + "\n";
-    urunMetni += "==============================\n";
-    urunMetni += "Sevk Adresi: " + mailtoSatirGuvenli(grup.sevkAdresi) + "\n";
-    urunMetni += "Sevk İlgili Kişi: " + mailtoSatirGuvenli(grup.sevkIlgiliKisi) + "\n";
-    urunMetni += "Sevk İlgili Kişi Telefonu: " + mailtoSatirGuvenli(grup.sevkIlgiliTelefon) + "\n\n";
-    urunMetni += "ÜRÜNLER\n";
-    urunMetni += "------------------------------\n";
+    urunMetni += "🟦 SEVK ADRESİ " + (grupIndex + 1) + "\n";
+    urunMetni += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    urunMetni += "📍 Sevk Adresi: " + mailtoSatirGuvenli(grup.sevkAdresi) + "\n";
+    urunMetni += "👤 İlgili Kişi: " + mailtoSatirGuvenli(grup.sevkIlgiliKisi) + "\n";
+    urunMetni += "☎️ Telefon: " + mailtoSatirGuvenli(grup.sevkIlgiliTelefon) + "\n\n";
+    urunMetni += "🟩 ÜRÜNLER\n";
+    urunMetni += "──────────────────────────────\n";
 
     grup.urunler.forEach(function(urun, urunIndex){
-      urunMetni += (urunIndex + 1) + ") " + mailtoSatirGuvenli(urun.urunAdi) + "\n";
+      urunMetni += "🟧 Ürün " + (urunIndex + 1) + ": " + mailtoSatirGuvenli(urun.urunAdi) + "\n";
       urunMetni += "   Miktar: " + mailtoSatirGuvenli(urun.miktar) + " " + mailtoSatirGuvenli(urun.birim) + "\n";
 
       if(urun.fiyat){
@@ -1696,8 +1696,8 @@ function siparisMetniOlustur(){
   });
 
   const genelNotBolumu = genelNot
-    ? `GENEL NOT
-==============================
+    ? `🟨 GENEL NOT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${genelNot}
 
 `
@@ -1708,8 +1708,8 @@ ${genelNot}
 
 Aşağıdaki siparişin işleme alınmasını rica ederim.
 
-SİPARİŞ KALEMLERİ
-==============================
+🟪 SİPARİŞ KALEMLERİ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${urunMetni}${genelNotBolumu}Saygılarımla`;
 
   return {
@@ -1739,9 +1739,9 @@ function mailTaslagiOlustur(){
     "&body=" + encodeURIComponent(sonuc.govde);
 
   if(yeniKayit){
-    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Outlook/mail taslağı açılıyor.", true);
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. iOS Mail / varsayılan mail taslağı açılıyor.", true);
   }else{
-    kayitDurumuYaz("Outlook/mail taslağı açılıyor.", true);
+    kayitDurumuYaz("iOS Mail / varsayılan mail taslağı açılıyor.", true);
   }
 
   window.location.href = mailto;
