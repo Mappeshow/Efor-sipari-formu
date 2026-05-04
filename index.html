@@ -67,6 +67,29 @@ input:focus,textarea:focus,select:focus{
   border-color:#f59e0b !important;
   box-shadow:0 0 0 3px rgba(245,158,11,0.14) !important;
 }
+.locked-field{
+  background:#f3f4f6 !important;
+  color:#475569 !important;
+  border-color:#94a3b8 !important;
+  box-shadow:none !important;
+  cursor:not-allowed;
+}
+.locked-field:focus{
+  border-color:#94a3b8 !important;
+  box-shadow:none !important;
+}
+.same-address-lock-info{
+  display:none;
+  background:#eff6ff;
+  border:1px solid #bfdbfe;
+  color:#1e40af;
+  border-radius:12px;
+  padding:9px 10px;
+  margin-top:8px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
 .invalid{
   border-color:#dc2626 !important;
   box-shadow:0 0 0 3px rgba(220,38,38,0.15) !important;
@@ -445,6 +468,56 @@ function clearAutoValue(el){
   el.classList.remove("autofilled");
 }
 
+function kilitliAlanYap(el){
+  if(!el) return;
+
+  el.readOnly = true;
+  el.setAttribute("data-same-address-locked", "1");
+  el.classList.add("autofilled");
+  el.classList.add("locked-field");
+}
+
+function kilitliAlanKaldir(el){
+  if(!el) return;
+
+  el.readOnly = false;
+  el.removeAttribute("data-same-address-locked");
+  el.classList.remove("locked-field");
+}
+
+function ayniAdresAlanlariniKilitle(box){
+  if(!box) return;
+
+  const alanlar = [
+    box.querySelector(".kalemSevkAdresi"),
+    box.querySelector(".kalemSevkIlgiliKisi"),
+    box.querySelector(".kalemSevkIlgiliTelefon")
+  ];
+
+  alanlar.forEach(function(el){
+    kilitliAlanYap(el);
+  });
+
+  const info = box.querySelector(".same-address-lock-info");
+  if(info){
+    info.style.display = "block";
+  }
+}
+
+function ayniAdresKilitliMi(box){
+  if(!box) return false;
+
+  const sevkAdresi = box.querySelector(".kalemSevkAdresi");
+  const kisi = box.querySelector(".kalemSevkIlgiliKisi");
+  const telefon = box.querySelector(".kalemSevkIlgiliTelefon");
+
+  return !!(
+    sevkAdresi && sevkAdresi.getAttribute("data-same-address-locked") === "1" &&
+    kisi && kisi.getAttribute("data-same-address-locked") === "1" &&
+    telefon && telefon.getAttribute("data-same-address-locked") === "1"
+  );
+}
+
 function kullaniciDegistirdi(e){
   if(programatikDoldurma) return;
 
@@ -542,7 +615,8 @@ function formVerisiniOku(){
       sevkAdresi: box.querySelector(".kalemSevkAdresi").value.trim(),
       sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value.trim(),
       sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value.trim(),
-      urunNotu: box.querySelector(".urunNotu").value.trim()
+      urunNotu: box.querySelector(".urunNotu").value.trim(),
+      sameAddressLocked: ayniAdresKilitliMi(box)
     });
   });
 
@@ -601,7 +675,8 @@ function formGecmisiniYukle(){
                       sevkAdresi: temizMetin(u.sevkAdresi),
                       sevkIlgiliKisi: temizMetin(u.sevkIlgiliKisi),
                       sevkIlgiliTelefon: temizMetin(u.sevkIlgiliTelefon),
-                      urunNotu: temizMetin(u.urunNotu)
+                      urunNotu: temizMetin(u.urunNotu),
+                      sameAddressLocked: !!u.sameAddressLocked
                     };
                   })
                 : []
@@ -1386,6 +1461,7 @@ function urunEkle(veri){
 
       <div class="section-mini-title">Bu Ürüne Ait Sevk Bilgileri</div>
       <div class="helper">Sevk önerileri sadece seçili cariye ait eski form kayıtlarından gelir.</div>
+      <div class="same-address-lock-info">Bu ürün, önceki ürünle aynı sevk adresine eklendiği için sevk adresi, ilgili kişi ve telefon alanları kilitlendi.</div>
 
       <label class="required">Sevk Adresi</label>
       <div class="suggest-wrap">
@@ -1415,10 +1491,8 @@ function urunEkle(veri){
   box.querySelector(".kalemSevkIlgiliTelefon").value = veri.sevkIlgiliTelefon || "";
   box.querySelector(".urunNotu").value = veri.urunNotu || "";
 
-  if(veri.autoSevkBilgisi){
-    box.querySelector(".kalemSevkAdresi").classList.add("autofilled");
-    box.querySelector(".kalemSevkIlgiliKisi").classList.add("autofilled");
-    box.querySelector(".kalemSevkIlgiliTelefon").classList.add("autofilled");
+  if(veri.autoSevkBilgisi || veri.sameAddressLocked){
+    ayniAdresAlanlariniKilitle(box);
   }
 
   urunBasliklariniYenile();
@@ -1529,6 +1603,14 @@ function formuDogrula(){
   return true;
 }
 
+function sevkGrupAnahtariOlustur(sevkAdresi, sevkIlgiliKisi, sevkIlgiliTelefon){
+  return [
+    karsilastirmaMetni(sevkAdresi),
+    karsilastirmaMetni(sevkIlgiliKisi),
+    karsilastirmaMetni(sevkIlgiliTelefon)
+  ].join("||");
+}
+
 function siparisMetniOlustur(){
   const musteri = deger("musteri");
   const vade = deger("vade");
@@ -1536,7 +1618,8 @@ function siparisMetniOlustur(){
 
   const urunKutulari = document.querySelectorAll(".product-box");
 
-  let urunMetni = "";
+  const sevkGruplari = [];
+  const sevkGrupIndex = {};
   let doluUrunSayisi = 0;
 
   urunKutulari.forEach(function(box){
@@ -1552,24 +1635,52 @@ function siparisMetniOlustur(){
 
     doluUrunSayisi++;
 
-    urunMetni += "ÜRÜN KALEMİ " + doluUrunSayisi + "\n";
+    const anahtar = sevkGrupAnahtariOlustur(sevkAdresi, sevkIlgiliKisi, sevkIlgiliTelefon);
+
+    if(sevkGrupIndex[anahtar] === undefined){
+      sevkGrupIndex[anahtar] = sevkGruplari.length;
+      sevkGruplari.push({
+        sevkAdresi: sevkAdresi,
+        sevkIlgiliKisi: sevkIlgiliKisi,
+        sevkIlgiliTelefon: sevkIlgiliTelefon,
+        urunler: []
+      });
+    }
+
+    sevkGruplari[sevkGrupIndex[anahtar]].urunler.push({
+      urunAdi: urunAdi,
+      miktar: miktar,
+      birim: birim,
+      fiyat: fiyat,
+      paraBirimi: paraBirimi,
+      urunNotu: urunNotu
+    });
+  });
+
+  let urunMetni = "";
+
+  sevkGruplari.forEach(function(grup, grupIndex){
+    urunMetni += "SEVK ADRESİ " + (grupIndex + 1) + "\n";
     urunMetni += "------------------------------\n";
-    urunMetni += "Ürün: " + urunAdi + "\n";
-    urunMetni += "Miktar: " + miktar + " " + birim + "\n";
+    urunMetni += "Sevk Adresi: " + grup.sevkAdresi + "\n";
+    urunMetni += "Sevk İlgili Kişi: " + grup.sevkIlgiliKisi + "\n";
+    urunMetni += "Sevk İlgili Kişi Telefonu: " + grup.sevkIlgiliTelefon + "\n";
+    urunMetni += "Ürünler:\n";
 
-    if(fiyat){
-      urunMetni += "Fiyat: " + fiyat + " " + paraBirimi + "\n";
-    }else{
-      urunMetni += "Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
-    }
+    grup.urunler.forEach(function(urun, urunIndex){
+      urunMetni += "  " + (urunIndex + 1) + ") Ürün: " + urun.urunAdi + "\n";
+      urunMetni += "     Miktar: " + urun.miktar + " " + urun.birim + "\n";
 
-    urunMetni += "Sevk Adresi: " + sevkAdresi + "\n";
-    urunMetni += "Sevk İlgili Kişi: " + sevkIlgiliKisi + "\n";
-    urunMetni += "Sevk İlgili Kişi Telefonu: " + sevkIlgiliTelefon + "\n";
+      if(urun.fiyat){
+        urunMetni += "     Fiyat: " + urun.fiyat + " " + urun.paraBirimi + "\n";
+      }else{
+        urunMetni += "     Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
+      }
 
-    if(urunNotu){
-      urunMetni += "Ürün Notu: " + urunNotu + "\n";
-    }
+      if(urun.urunNotu){
+        urunMetni += "     Ürün Notu: " + urun.urunNotu + "\n";
+      }
+    });
 
     urunMetni += "\n";
   });
@@ -1595,6 +1706,7 @@ ${urunMetni}${genelNotBolumu}Saygılarımla`;
     musteri: musteri,
     vade: vade,
     urunSayisi: doluUrunSayisi,
+    sevkAdresiSayisi: sevkGruplari.length,
     govde: govde
   };
 }
