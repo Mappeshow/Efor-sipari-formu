@@ -238,7 +238,6 @@ button{
   margin-top:14px;
 }
 .preview{
-  white-space:pre-wrap;
   background:#111827;
   color:#f9fafb;
   padding:12px;
@@ -247,6 +246,116 @@ button{
   line-height:1.4;
   margin-top:12px;
   display:none;
+  overflow:auto;
+}
+.preview-plain-note{
+  background:#0f172a;
+  border:1px solid #334155;
+  color:#cbd5e1;
+  border-radius:12px;
+  padding:9px 10px;
+  margin-bottom:10px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.mail-preview-html{
+  background:#ffffff;
+  color:#111827;
+  border-radius:13px;
+  padding:12px;
+  white-space:normal;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+}
+.preview-intro{
+  font-size:14px;
+  line-height:1.45;
+  color:#111827;
+  margin-bottom:12px;
+}
+.preview-main-title{
+  background:#1e3a8a;
+  color:#ffffff;
+  border-radius:12px;
+  padding:10px 11px;
+  font-size:14px;
+  font-weight:900;
+  margin-top:10px;
+  margin-bottom:10px;
+}
+.preview-address-card{
+  border:2px solid #bfdbfe;
+  border-radius:14px;
+  overflow:hidden;
+  margin-top:12px;
+  background:#f8fafc;
+}
+.preview-address-title{
+  background:#eff6ff;
+  color:#1d4ed8;
+  padding:9px 10px;
+  font-weight:900;
+  font-size:13px;
+  border-bottom:1px solid #bfdbfe;
+}
+.preview-address-body{
+  padding:10px;
+}
+.preview-row{
+  margin-bottom:6px;
+  font-size:13px;
+  line-height:1.35;
+}
+.preview-label{
+  font-weight:900;
+  color:#0f172a;
+}
+.preview-address-value{
+  color:#1d4ed8;
+  font-weight:900;
+}
+.preview-products-title{
+  color:#92400e;
+  font-weight:900;
+  margin-top:10px;
+  margin-bottom:6px;
+  font-size:13px;
+}
+.preview-product-list{
+  margin:0;
+  padding-left:22px;
+}
+.preview-product-item{
+  margin-bottom:10px;
+  padding:8px;
+  border:1px solid #fed7aa;
+  background:#fff7ed;
+  border-radius:11px;
+}
+.preview-product-name{
+  color:#9a3412;
+  font-weight:900;
+}
+.preview-product-detail{
+  margin-top:4px;
+  color:#334155;
+  font-size:12px;
+  line-height:1.35;
+}
+.preview-note-block{
+  margin-top:12px;
+  background:#fefce8;
+  border:1px solid #fde68a;
+  color:#713f12;
+  border-radius:12px;
+  padding:10px;
+  font-size:13px;
+  line-height:1.4;
+}
+.preview-signature{
+  margin-top:14px;
+  font-weight:800;
+  color:#111827;
 }
 .section-mini-title{
   margin-top:16px;
@@ -1611,11 +1720,86 @@ function sevkGrupAnahtariOlustur(sevkAdresi, sevkIlgiliKisi, sevkIlgiliTelefon){
   ].join("||");
 }
 
-function mailtoSatirGuvenli(value){
+function htmlKacir(value){
   return String(value || "")
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .trim();
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function satirSonlariniHtmlYap(value){
+  return htmlKacir(value).replace(/\n/g, "<br>");
+}
+
+function siparisHtmlGovdeOlustur(genelNot, sevkGruplari){
+  let html = `
+    <div class="preview-plain-note">
+      Not: iOS üzerinde mail taslağı mailto ile açıldığı için gönderilecek mail gövdesi düz metindir. Renkli/kalın görünüm burada, yani form içi önizlemede güvenli şekilde gösterilir.
+    </div>
+    <div class="mail-preview-html">
+      <div class="preview-intro">
+        <strong>Merhaba,</strong><br><br>
+        Aşağıdaki siparişin işleme alınmasını rica ederim.
+      </div>
+      <div class="preview-main-title">SİPARİŞ KALEMLERİ</div>
+  `;
+
+  sevkGruplari.forEach(function(grup, grupIndex){
+    html += `
+      <div class="preview-address-card">
+        <div class="preview-address-title">SEVK ADRESİ ${grupIndex + 1}</div>
+        <div class="preview-address-body">
+          <div class="preview-row"><span class="preview-label">Sevk Adresi:</span> <strong class="preview-address-value">${satirSonlariniHtmlYap(grup.sevkAdresi)}</strong></div>
+          <div class="preview-row"><span class="preview-label">Sevk İlgili Kişi:</span> <strong>${htmlKacir(grup.sevkIlgiliKisi)}</strong></div>
+          <div class="preview-row"><span class="preview-label">Sevk İlgili Kişi Telefonu:</span> <strong>${htmlKacir(grup.sevkIlgiliTelefon)}</strong></div>
+          <div class="preview-products-title">Ürünler</div>
+          <ol class="preview-product-list">
+    `;
+
+    grup.urunler.forEach(function(urun){
+      html += `
+            <li class="preview-product-item">
+              <div><span class="preview-label">Ürün:</span> <strong class="preview-product-name">${htmlKacir(urun.urunAdi)}</strong></div>
+              <div class="preview-product-detail"><strong>Miktar:</strong> ${htmlKacir(urun.miktar)} ${htmlKacir(urun.birim)}</div>
+      `;
+
+      if(urun.fiyat){
+        html += `<div class="preview-product-detail"><strong>Fiyat:</strong> ${htmlKacir(urun.fiyat)} ${htmlKacir(urun.paraBirimi)}</div>`;
+      }else{
+        html += `<div class="preview-product-detail"><strong>Fiyat:</strong> Sistemdeki geçerli fiyat baz alınacaktır.</div>`;
+      }
+
+      if(urun.urunNotu){
+        html += `<div class="preview-product-detail"><strong>Ürün Notu:</strong> ${htmlKacir(urun.urunNotu)}</div>`;
+      }
+
+      html += `</li>`;
+    });
+
+    html += `
+          </ol>
+        </div>
+      </div>
+    `;
+  });
+
+  if(genelNot){
+    html += `
+      <div class="preview-note-block">
+        <strong>GENEL NOT</strong><br>
+        ${satirSonlariniHtmlYap(genelNot)}
+      </div>
+    `;
+  }
+
+  html += `
+      <div class="preview-signature">Saygılarımla</div>
+    </div>
+  `;
+
+  return html;
 }
 
 function siparisMetniOlustur(){
@@ -1667,37 +1851,34 @@ function siparisMetniOlustur(){
   let urunMetni = "";
 
   sevkGruplari.forEach(function(grup, grupIndex){
-    urunMetni += "🟦 SEVK ADRESİ " + (grupIndex + 1) + "\n";
-    urunMetni += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-    urunMetni += "📍 Sevk Adresi: " + mailtoSatirGuvenli(grup.sevkAdresi) + "\n";
-    urunMetni += "👤 İlgili Kişi: " + mailtoSatirGuvenli(grup.sevkIlgiliKisi) + "\n";
-    urunMetni += "☎️ Telefon: " + mailtoSatirGuvenli(grup.sevkIlgiliTelefon) + "\n\n";
-    urunMetni += "🟩 ÜRÜNLER\n";
-    urunMetni += "──────────────────────────────\n";
+    urunMetni += "SEVK ADRESİ " + (grupIndex + 1) + "\n";
+    urunMetni += "------------------------------\n";
+    urunMetni += "Sevk Adresi: " + grup.sevkAdresi + "\n";
+    urunMetni += "Sevk İlgili Kişi: " + grup.sevkIlgiliKisi + "\n";
+    urunMetni += "Sevk İlgili Kişi Telefonu: " + grup.sevkIlgiliTelefon + "\n";
+    urunMetni += "Ürünler:\n";
 
     grup.urunler.forEach(function(urun, urunIndex){
-      urunMetni += "🟧 Ürün " + (urunIndex + 1) + ": " + mailtoSatirGuvenli(urun.urunAdi) + "\n";
-      urunMetni += "   Miktar: " + mailtoSatirGuvenli(urun.miktar) + " " + mailtoSatirGuvenli(urun.birim) + "\n";
+      urunMetni += "  " + (urunIndex + 1) + ") Ürün: " + urun.urunAdi + "\n";
+      urunMetni += "     Miktar: " + urun.miktar + " " + urun.birim + "\n";
 
       if(urun.fiyat){
-        urunMetni += "   Fiyat: " + mailtoSatirGuvenli(urun.fiyat) + " " + mailtoSatirGuvenli(urun.paraBirimi) + "\n";
+        urunMetni += "     Fiyat: " + urun.fiyat + " " + urun.paraBirimi + "\n";
       }else{
-        urunMetni += "   Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
+        urunMetni += "     Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
       }
 
       if(urun.urunNotu){
-        urunMetni += "   Ürün Notu: " + mailtoSatirGuvenli(urun.urunNotu) + "\n";
+        urunMetni += "     Ürün Notu: " + urun.urunNotu + "\n";
       }
-
-      urunMetni += "\n";
     });
 
     urunMetni += "\n";
   });
 
   const genelNotBolumu = genelNot
-    ? `🟨 GENEL NOT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ? `GENEL NOT
+==============================
 ${genelNot}
 
 `
@@ -1708,8 +1889,8 @@ ${genelNot}
 
 Aşağıdaki siparişin işleme alınmasını rica ederim.
 
-🟪 SİPARİŞ KALEMLERİ
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SİPARİŞ KALEMLERİ
+==============================
 ${urunMetni}${genelNotBolumu}Saygılarımla`;
 
   return {
@@ -1717,7 +1898,8 @@ ${urunMetni}${genelNotBolumu}Saygılarımla`;
     vade: vade,
     urunSayisi: doluUrunSayisi,
     sevkAdresiSayisi: sevkGruplari.length,
-    govde: govde
+    govde: govde,
+    htmlGovde: siparisHtmlGovdeOlustur(genelNot, sevkGruplari)
   };
 }
 
@@ -1733,15 +1915,13 @@ function mailTaslagiOlustur(){
   const konu = "Sipariş Talebi - " + sonuc.musteri + " - Vade: " + sonuc.vade;
 
   const mailto =
-    "mailto:" + encodeURIComponent(toRecipients).replace(/%2C/g, ",") +
-    "?cc=" + encodeURIComponent(ccRecipients).replace(/%2C/g, ",") +
+    "mailto:" + toRecipients +
+    "?cc=" + ccRecipients +
     "&subject=" + encodeURIComponent(konu) +
     "&body=" + encodeURIComponent(sonuc.govde);
 
   if(yeniKayit){
-    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. iOS Mail / varsayılan mail taslağı açılıyor.", true);
-  }else{
-    kayitDurumuYaz("iOS Mail / varsayılan mail taslağı açılıyor.", true);
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi ve mail taslağı açılıyor.", true);
   }
 
   window.location.href = mailto;
@@ -1758,7 +1938,7 @@ function onizlemeGoster(){
   const sonuc = siparisMetniOlustur();
   const preview = document.getElementById("preview");
   preview.style.display = "block";
-  preview.textContent = sonuc.govde;
+  preview.innerHTML = sonuc.htmlGovde;
 
   if(yeniKayit){
     kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Önizleme gösteriliyor.", true);
