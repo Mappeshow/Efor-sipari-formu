@@ -167,6 +167,26 @@ button{
   margin-top:14px;
   margin-bottom:14px;
 }
+.product-add-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:15px;
+}
+.product-add-actions button{
+  margin-top:0;
+}
+.same-address-button{
+  background:#fef3c7;
+  color:#92400e;
+  border:1px solid #fcd34d;
+}
+.same-address-button:disabled{
+  background:#f3f4f6;
+  color:#9ca3af;
+  border:1px solid #e5e7eb;
+  opacity:0.55;
+}
 .history-clear-area{
   display:flex;
   justify-content:flex-start;
@@ -327,7 +347,10 @@ button{
 
     <div id="urunler"></div>
 
-    <button class="secondary" onclick="urunEkle()">+ Ürün Ekle</button>
+    <div class="product-add-actions">
+      <button id="ayniAdresBtn" class="same-address-button" onclick="ayniAdreseUrunEkle()" disabled>Aynı Adrese Ürün Ekle</button>
+      <button class="secondary" onclick="urunEkle()">+ Ürün Ekle</button>
+    </div>
 
     <label>Genel Sipariş Notu</label>
     <textarea id="genelNot" placeholder="Varsa genel not"></textarea>
@@ -342,6 +365,7 @@ button{
     <div class="note">
       Kırmızı yıldızlı alanlar zorunludur. Ürün 1 silinemez. Fiyat, ürün notu ve genel sipariş notu isteğe bağlıdır.
       Otomatik doldurulan alanlar sarı görünür; kullanıcı elle değiştirirse beyaza döner.
+      “Aynı Adrese Ürün Ekle” butonu, son ürünün sevk adresi, ilgili kişi ve telefonu doluysa aktif olur.
       Bu form server kullanmaz. Geçmiş kayıtlar sadece bu cihazın tarayıcı hafızasında saklanır.
     </div>
 
@@ -429,6 +453,79 @@ function kullaniciDegistirdi(e){
   if(el && el.classList && el.classList.contains("autofilled")){
     el.classList.remove("autofilled");
   }
+}
+
+function sonUrunKutusuAl(){
+  const kutular = document.querySelectorAll(".product-box");
+  if(kutular.length < 1){
+    return null;
+  }
+
+  return kutular[kutular.length - 1];
+}
+
+function sonUrunAdresBilgileriAl(){
+  const box = sonUrunKutusuAl();
+
+  if(!box){
+    return null;
+  }
+
+  return {
+    sevkAdresi: box.querySelector(".kalemSevkAdresi").value.trim(),
+    sevkIlgiliKisi: box.querySelector(".kalemSevkIlgiliKisi").value.trim(),
+    sevkIlgiliTelefon: box.querySelector(".kalemSevkIlgiliTelefon").value.trim()
+  };
+}
+
+function sonUrunAdresBilgileriDoluMu(){
+  const bilgi = sonUrunAdresBilgileriAl();
+
+  if(!bilgi){
+    return false;
+  }
+
+  return bilgi.sevkAdresi.length > 0 &&
+         bilgi.sevkIlgiliKisi.length > 0 &&
+         bilgi.sevkIlgiliTelefon.length > 0;
+}
+
+function ayniAdresButonunuGuncelle(){
+  const btn = document.getElementById("ayniAdresBtn");
+
+  if(!btn){
+    return;
+  }
+
+  btn.disabled = !sonUrunAdresBilgileriDoluMu();
+}
+
+function ayniAdreseUrunEkle(){
+  const bilgi = sonUrunAdresBilgileriAl();
+
+  if(!bilgi || !sonUrunAdresBilgileriDoluMu()){
+    alert("Aynı adrese ürün eklemek için son ürün kaleminde sevk adresi, ilgili kişi ve telefon dolu olmalıdır.");
+    ayniAdresButonunuGuncelle();
+    return;
+  }
+
+  const yeniBox = urunEkle({
+    sevkAdresi: bilgi.sevkAdresi,
+    sevkIlgiliKisi: bilgi.sevkIlgiliKisi,
+    sevkIlgiliTelefon: bilgi.sevkIlgiliTelefon,
+    autoSevkBilgisi: true
+  });
+
+  if(yeniBox){
+    const urunInput = yeniBox.querySelector(".urunAdi");
+    if(urunInput){
+      setTimeout(function(){
+        urunInput.focus();
+      }, 100);
+    }
+  }
+
+  kayitDurumuYaz("Yeni ürün kalemi, bir önceki ürünün sevk adresi ve iletişim bilgileriyle eklendi.", true);
 }
 
 function formVerisiniOku(){
@@ -736,6 +833,7 @@ function musteriSecilinceDoldur(input, item){
 
   tumPanelleriKapat();
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 
   kayitDurumuYaz("Cari seçildi. Bu cariye bağlı son vade otomatik getirildi.", true);
 }
@@ -773,6 +871,7 @@ function urunSecilinceDoldur(input, item){
 
   tumPanelleriKapat();
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 
   kayitDurumuYaz("Ürün seçildi. Bu cari + ürün bağına göre fiyat, para birimi ve birim otomatik getirildi.", true);
 }
@@ -806,6 +905,7 @@ function sevkSecilinceDoldur(input, item){
 
   tumPanelleriKapat();
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 
   kayitDurumuYaz("Sevk adresi seçildi. Bu cari + adres bağına göre ilgili kişi ve telefon otomatik getirildi.", true);
 }
@@ -1077,11 +1177,14 @@ function formVerisiniYukle(){
 
     yuklemeYapiliyor = false;
 
+    ayniAdresButonunuGuncelle();
+
     kayitDurumuYaz("Son taslak geri yüklendi. Tüm geçmiş form kayıtları bağlılıklarıyla saklanır.", true);
   }catch(e){
     yuklemeYapiliyor = false;
     document.getElementById("urunler").innerHTML = "";
     urunEkle();
+    ayniAdresButonunuGuncelle();
     kayitDurumuYaz("Kayıtlı taslak okunamadı. Yeni boş form açıldı.", false);
   }
 }
@@ -1312,9 +1415,18 @@ function urunEkle(veri){
   box.querySelector(".kalemSevkIlgiliTelefon").value = veri.sevkIlgiliTelefon || "";
   box.querySelector(".urunNotu").value = veri.urunNotu || "";
 
+  if(veri.autoSevkBilgisi){
+    box.querySelector(".kalemSevkAdresi").classList.add("autofilled");
+    box.querySelector(".kalemSevkIlgiliKisi").classList.add("autofilled");
+    box.querySelector(".kalemSevkIlgiliTelefon").classList.add("autofilled");
+  }
+
   urunBasliklariniYenile();
   autocompleteTumunuBagla();
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
+
+  return box;
 }
 
 function urunSil(btn){
@@ -1341,6 +1453,7 @@ function urunSil(btn){
   box.remove();
   urunBasliklariniYenile();
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 }
 
 function formuDogrula(){
@@ -1528,6 +1641,8 @@ function onizlemeGoster(){
   }else{
     kayitDurumuYaz("Bu form son kayıtla aynı olduğu için tekrar geçmişe eklenmedi. Önizleme gösteriliyor.", true);
   }
+
+  ayniAdresButonunuGuncelle();
 }
 
 function formuTemizle(){
@@ -1552,23 +1667,28 @@ function formuTemizle(){
 
   yuklemeYapiliyor = false;
 
+  ayniAdresButonunuGuncelle();
+
   kayitDurumuYaz("Mevcut form temizlendi. Tüm geçmiş form kayıtları korunuyor.", false);
 }
 
 document.addEventListener("input", function(e){
   kullaniciDegistirdi(e);
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 }, true);
 
 document.addEventListener("change", function(e){
   kullaniciDegistirdi(e);
   otomatikKaydetPlanla();
+  ayniAdresButonunuGuncelle();
 }, true);
 
 document.addEventListener("DOMContentLoaded", function(){
   formGecmisiniYukle();
   formVerisiniYukle();
   autocompleteTumunuBagla();
+  ayniAdresButonunuGuncelle();
 });
 </script>
 </body>
