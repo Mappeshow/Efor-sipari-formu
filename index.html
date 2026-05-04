@@ -1611,38 +1611,14 @@ function sevkGrupAnahtariOlustur(sevkAdresi, sevkIlgiliKisi, sevkIlgiliTelefon){
   ].join("||");
 }
 
-function htmlEscape(value){
+function mailtoSatirGuvenli(value){
   return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
 }
 
-function htmlSatirSonu(value){
-  return htmlEscape(value).replace(/\n/g, "<br>");
-}
-
-function mimeBaslikEncode(value){
-  const metin = String(value || "");
-
-  try{
-    return "=?UTF-8?B?" + btoa(unescape(encodeURIComponent(metin))) + "?=";
-  }catch(e){
-    return metin;
-  }
-}
-
-function dosyaAdiGuvenli(value){
-  return String(value || "siparis")
-    .replace(/[\\/:*?"<>|]/g, "-")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 120) || "siparis";
-}
-
-function siparisMailIcerigiOlustur(){
+function siparisMetniOlustur(){
   const musteri = deger("musteri");
   const vade = deger("vade");
   const genelNot = deger("genelNot");
@@ -1688,64 +1664,38 @@ function siparisMailIcerigiOlustur(){
     });
   });
 
-  let metinUrunBolumu = "";
-  let htmlUrunBolumu = "";
+  let urunMetni = "";
 
   sevkGruplari.forEach(function(grup, grupIndex){
-    metinUrunBolumu += "SEVK ADRESİ " + (grupIndex + 1) + "\n";
-    metinUrunBolumu += "------------------------------\n";
-    metinUrunBolumu += "Sevk Adresi: " + grup.sevkAdresi + "\n";
-    metinUrunBolumu += "Sevk İlgili Kişi: " + grup.sevkIlgiliKisi + "\n";
-    metinUrunBolumu += "Sevk İlgili Kişi Telefonu: " + grup.sevkIlgiliTelefon + "\n";
-    metinUrunBolumu += "Ürünler:\n";
-
-    htmlUrunBolumu += `
-      <div style="border:1px solid #d1d5db;border-radius:10px;padding:12px;margin:14px 0;background:#ffffff;">
-        <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:#111827;">
-          <strong>SEVK ADRESİ ${grupIndex + 1}</strong>
-        </div>
-        <div style="margin-bottom:4px;"><strong>Sevk Adresi:</strong> <strong>${htmlSatirSonu(grup.sevkAdresi)}</strong></div>
-        <div style="margin-bottom:4px;"><strong>Sevk İlgili Kişi:</strong> ${htmlEscape(grup.sevkIlgiliKisi)}</div>
-        <div style="margin-bottom:10px;"><strong>Sevk İlgili Kişi Telefonu:</strong> ${htmlEscape(grup.sevkIlgiliTelefon)}</div>
-        <div style="font-weight:700;margin:8px 0 6px 0;"><strong>Ürünler:</strong></div>
-        <ol style="margin-top:6px;padding-left:22px;">
-    `;
+    urunMetni += "SEVK ADRESİ " + (grupIndex + 1) + "\n";
+    urunMetni += "==============================\n";
+    urunMetni += "Sevk Adresi: " + mailtoSatirGuvenli(grup.sevkAdresi) + "\n";
+    urunMetni += "Sevk İlgili Kişi: " + mailtoSatirGuvenli(grup.sevkIlgiliKisi) + "\n";
+    urunMetni += "Sevk İlgili Kişi Telefonu: " + mailtoSatirGuvenli(grup.sevkIlgiliTelefon) + "\n\n";
+    urunMetni += "ÜRÜNLER\n";
+    urunMetni += "------------------------------\n";
 
     grup.urunler.forEach(function(urun, urunIndex){
-      metinUrunBolumu += "  " + (urunIndex + 1) + ") Ürün: " + urun.urunAdi + "\n";
-      metinUrunBolumu += "     Miktar: " + urun.miktar + " " + urun.birim + "\n";
-
-      htmlUrunBolumu += `
-        <li style="margin-bottom:10px;">
-          <div><strong>Ürün: ${htmlEscape(urun.urunAdi)}</strong></div>
-          <div>Miktar: ${htmlEscape(urun.miktar)} ${htmlEscape(urun.birim)}</div>
-      `;
+      urunMetni += (urunIndex + 1) + ") " + mailtoSatirGuvenli(urun.urunAdi) + "\n";
+      urunMetni += "   Miktar: " + mailtoSatirGuvenli(urun.miktar) + " " + mailtoSatirGuvenli(urun.birim) + "\n";
 
       if(urun.fiyat){
-        metinUrunBolumu += "     Fiyat: " + urun.fiyat + " " + urun.paraBirimi + "\n";
-        htmlUrunBolumu += `<div>Fiyat: ${htmlEscape(urun.fiyat)} ${htmlEscape(urun.paraBirimi)}</div>`;
+        urunMetni += "   Fiyat: " + mailtoSatirGuvenli(urun.fiyat) + " " + mailtoSatirGuvenli(urun.paraBirimi) + "\n";
       }else{
-        metinUrunBolumu += "     Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
-        htmlUrunBolumu += `<div>Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.</div>`;
+        urunMetni += "   Fiyat: Sistemdeki geçerli fiyat baz alınacaktır.\n";
       }
 
       if(urun.urunNotu){
-        metinUrunBolumu += "     Ürün Notu: " + urun.urunNotu + "\n";
-        htmlUrunBolumu += `<div>Ürün Notu: ${htmlEscape(urun.urunNotu)}</div>`;
+        urunMetni += "   Ürün Notu: " + mailtoSatirGuvenli(urun.urunNotu) + "\n";
       }
 
-      htmlUrunBolumu += `</li>`;
+      urunMetni += "\n";
     });
 
-    metinUrunBolumu += "\n";
-
-    htmlUrunBolumu += `
-        </ol>
-      </div>
-    `;
+    urunMetni += "\n";
   });
 
-  const metinGenelNotBolumu = genelNot
+  const genelNotBolumu = genelNot
     ? `GENEL NOT
 ==============================
 ${genelNot}
@@ -1753,85 +1703,22 @@ ${genelNot}
 `
     : "";
 
-  const htmlGenelNotBolumu = genelNot
-    ? `
-      <div style="border:1px solid #fed7aa;border-radius:10px;padding:12px;margin:14px 0;background:#fff7ed;">
-        <div style="font-weight:700;margin-bottom:6px;"><strong>GENEL NOT</strong></div>
-        <div>${htmlSatirSonu(genelNot)}</div>
-      </div>
-    `
-    : "";
-
-  const metinGovde =
+  const govde =
 `Merhaba,
 
 Aşağıdaki siparişin işleme alınmasını rica ederim.
 
 SİPARİŞ KALEMLERİ
 ==============================
-${metinUrunBolumu}${metinGenelNotBolumu}Saygılarımla`;
-
-  const htmlGovde = `<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Sipariş Talebi</title>
-</head>
-<body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.45;color:#111827;background:#ffffff;">
-  <p>Merhaba,</p>
-  <p>Aşağıdaki siparişin işleme alınmasını rica ederim.</p>
-
-  <div style="font-size:16px;font-weight:700;margin:16px 0 8px 0;color:#111827;">
-    <strong>SİPARİŞ KALEMLERİ</strong>
-  </div>
-
-  ${htmlUrunBolumu}
-  ${htmlGenelNotBolumu}
-
-  <p>Saygılarımla</p>
-</body>
-</html>`;
+${urunMetni}${genelNotBolumu}Saygılarımla`;
 
   return {
     musteri: musteri,
     vade: vade,
     urunSayisi: doluUrunSayisi,
     sevkAdresiSayisi: sevkGruplari.length,
-    govde: metinGovde,
-    htmlGovde: htmlGovde
+    govde: govde
   };
-}
-
-function siparisMetniOlustur(){
-  return siparisMailIcerigiOlustur();
-}
-
-function emlDosyasiOlusturVeIndir(sonuc, konu){
-  const emlIcerik = [
-    "To: " + toRecipients,
-    "Cc: " + ccRecipients,
-    "Subject: " + mimeBaslikEncode(konu),
-    "MIME-Version: 1.0",
-    "X-Unsent: 1",
-    "Content-Type: text/html; charset=UTF-8",
-    "Content-Transfer-Encoding: 8bit",
-    "",
-    sonuc.htmlGovde
-  ].join("\r\n");
-
-  const blob = new Blob([emlIcerik], {type:"message/rfc822;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = dosyaAdiGuvenli(konu) + ".eml";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  setTimeout(function(){
-    URL.revokeObjectURL(url);
-  }, 2000);
 }
 
 function mailTaslagiOlustur(){
@@ -1845,13 +1732,19 @@ function mailTaslagiOlustur(){
   const sonuc = siparisMetniOlustur();
   const konu = "Sipariş Talebi - " + sonuc.musteri + " - Vade: " + sonuc.vade;
 
-  emlDosyasiOlusturVeIndir(sonuc, konu);
+  const mailto =
+    "mailto:" + encodeURIComponent(toRecipients).replace(/%2C/g, ",") +
+    "?cc=" + encodeURIComponent(ccRecipients).replace(/%2C/g, ",") +
+    "&subject=" + encodeURIComponent(konu) +
+    "&body=" + encodeURIComponent(sonuc.govde);
 
   if(yeniKayit){
-    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Kalın yazılı HTML mail taslağı .eml olarak oluşturuldu. Dosyayı Outlook ile açabilirsiniz.", true);
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Outlook/mail taslağı açılıyor.", true);
   }else{
-    kayitDurumuYaz("Kalın yazılı HTML mail taslağı .eml olarak oluşturuldu. Dosyayı Outlook ile açabilirsiniz.", true);
+    kayitDurumuYaz("Outlook/mail taslağı açılıyor.", true);
   }
+
+  window.location.href = mailto;
 }
 
 function onizlemeGoster(){
@@ -1865,12 +1758,12 @@ function onizlemeGoster(){
   const sonuc = siparisMetniOlustur();
   const preview = document.getElementById("preview");
   preview.style.display = "block";
-  preview.innerHTML = sonuc.htmlGovde;
+  preview.textContent = sonuc.govde;
 
   if(yeniKayit){
-    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. HTML önizleme gösteriliyor.", true);
+    kayitDurumuYaz("Form tüm bağlılıklarıyla geçmişe kaydedildi. Önizleme gösteriliyor.", true);
   }else{
-    kayitDurumuYaz("Bu form son kayıtla aynı olduğu için tekrar geçmişe eklenmedi. HTML önizleme gösteriliyor.", true);
+    kayitDurumuYaz("Bu form son kayıtla aynı olduğu için tekrar geçmişe eklenmedi. Önizleme gösteriliyor.", true);
   }
 
   ayniAdresButonunuGuncelle();
